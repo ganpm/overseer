@@ -8,6 +8,8 @@ import {
 import init, * as game from "../../pkg/overseer.js";
 import gameData from "@/game/game-data.json";
 
+import { Spinner } from "@/components/ui/spinner.js";
+
 type GameExports = typeof game;
 type GameInstance = InstanceType<typeof game.Game>;
 
@@ -41,7 +43,11 @@ export function GameProvider({ children }: GameProviderProps) {
   }, []);
 
   if (!gameContextValue) {
-    return <div>Loading game...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spinner className="size-8" />
+      </div> 
+    );
   }
 
   return (
