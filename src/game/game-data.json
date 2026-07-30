@@ -1,0 +1,232 @@
+{
+	"resources": [
+		{ "name": "Energy" },
+		{ "name": "Iron Ore" },
+		{ "name": "Copper Ore" },
+		{ "name": "Stone" },
+		{ "name": "Silica" },
+		{ "name": "Coal" },
+		{ "name": "Water" },
+		{ "name": "Crude Oil" },
+		{ "name": "Iron Ingot" },
+		{ "name": "Copper Ingot" },
+		{ "name": "Silicon" },
+		{ "name": "Refined Oil" },
+		{ "name": "Magnet" },
+		{ "name": "Copper Wire" },
+		{ "name": "Electromagnet" }
+	],
+	"processes": [
+		{
+			"name": "Photovoltaic Energy Production",
+			"duration": 1.0,
+			"inputs": [],
+			"outputs": [{ "amount": 4.0, "resource": "Energy" }]
+		},
+		{
+			"name": "Wind Energy Production",
+			"duration": 1.0,
+			"inputs": [],
+			"outputs": [{ "amount": 8.0, "resource": "Energy" }]
+		},
+		{
+			"name": "Hydroelectric Energy Production",
+			"duration": 1.0,
+			"inputs": [],
+			"outputs": [{ "amount": 8.0, "resource": "Energy" }]
+		},
+		{
+			"name": "Coal Energy Production",
+			"duration": 1.0,
+			"inputs": [{ "amount": 1.0, "resource": "Coal" }],
+			"outputs": [{ "amount": 16.0, "resource": "Energy" }]
+		},
+		{
+			"name": "Iron Ore Mining",
+			"duration": 1.0,
+			"inputs": [{ "amount": 1.0, "resource": "Energy" }],
+			"outputs": [{ "amount": 1.0, "resource": "Iron Ore" }]
+		},
+		{
+			"name": "Copper Ore Mining",
+			"duration": 1.0,
+			"inputs": [{ "amount": 1.0, "resource": "Energy" }],
+			"outputs": [{ "amount": 1.0, "resource": "Copper Ore" }]
+		},
+		{
+			"name": "Stone Mining",
+			"duration": 1.0,
+			"inputs": [{ "amount": 1.0, "resource": "Energy" }],
+			"outputs": [{ "amount": 1.0, "resource": "Stone" }]
+		},
+		{
+			"name": "Silica Mining",
+			"duration": 1.0,
+			"inputs": [{ "amount": 1.0, "resource": "Energy" }],
+			"outputs": [{ "amount": 1.0, "resource": "Silica" }]
+		},
+		{
+			"name": "Coal Mining",
+			"duration": 1.0,
+			"inputs": [{ "amount": 1.0, "resource": "Energy" }],
+			"outputs": [{ "amount": 1.0, "resource": "Coal" }]
+		},
+		{
+			"name": "Water Extraction",
+			"duration": 1.0,
+			"inputs": [{ "amount": 1.0, "resource": "Energy" }],
+			"outputs": [{ "amount": 1.0, "resource": "Water" }]
+		},
+		{
+			"name": "Crude Oil Extraction",
+			"duration": 1.0,
+			"inputs": [{ "amount": 1.0, "resource": "Energy" }],
+			"outputs": [{ "amount": 1.0, "resource": "Crude Oil" }]
+		},
+		{
+			"name": "Iron Ore Smelting",
+			"duration": 2.0,
+			"inputs": [
+				{ "amount": 1.0, "resource": "Iron Ore" },
+				{ "amount": 2.0, "resource": "Energy" }
+			],
+			"outputs": [{ "amount": 1.0, "resource": "Iron Ingot" }]
+		},
+		{
+			"name": "Copper Ore Smelting",
+			"duration": 2.0,
+			"inputs": [
+				{ "amount": 1.0, "resource": "Copper Ore" },
+				{ "amount": 2.0, "resource": "Energy" }
+			],
+			"outputs": [{ "amount": 1.0, "resource": "Copper Ingot" }]
+		},
+		{
+			"name": "Crude Oil Refinement",
+			"duration": 5.0,
+			"inputs": [
+				{ "amount": 1.0, "resource": "Crude Oil" },
+				{ "amount": 5.0, "resource": "Energy" }
+			],
+			"outputs": [{ "amount": 1.0, "resource": "Refined Oil" }]
+		},
+		{
+			"name": "Silica Processing",
+			"duration": 3.0,
+			"inputs": [
+				{ "amount": 1.0, "resource": "Silica" },
+				{ "amount": 3.0, "resource": "Energy" }
+			],
+			"outputs": [{ "amount": 1.0, "resource": "Silicon" }]
+		},
+		{
+			"name": "Magnet Production",
+			"duration": 2.0,
+			"inputs": [
+				{ "amount": 1.0, "resource": "Iron Ingot" },
+				{ "amount": 2.0, "resource": "Energy" }
+			],
+			"outputs": [{ "amount": 1.0, "resource": "Magnet" }]
+		},
+		{
+			"name": "Copper Wire Production",
+			"duration": 1.0,
+			"inputs": [
+				{ "amount": 1.0, "resource": "Copper Ingot" },
+				{ "amount": 2.0, "resource": "Energy" }
+			],
+			"outputs": [{ "amount": 2.0, "resource": "Copper Wire" }]
+		},
+		{
+			"name": "Electromagnet Production",
+			"duration": 4.0,
+			"inputs": [
+				{ "amount": 1.0, "resource": "Magnet" },
+				{ "amount": 1.0, "resource": "Copper Wire" },
+				{ "amount": 4.0, "resource": "Energy" }
+			],
+			"outputs": [{ "amount": 1.0, "resource": "Electromagnet" }]
+		}
+	],
+	"buildings": [
+		{
+			"name": "Solar Panel",
+			"available_processes": ["Photovoltaic Energy Production"],
+			"cost": []
+		},
+		{
+			"name": "Wind Turbine",
+			"available_processes": ["Wind Energy Production"],
+			"cost": []
+		},
+		{
+			"name": "Hydroelectric Dam",
+			"available_processes": ["Hydroelectric Energy Production"],
+			"cost": []
+		},
+		{
+			"name": "Coal Power Plant",
+			"available_processes": ["Coal Energy Production"],
+			"cost": [{ "amount": 10.0, "resource": "Coal" }]
+		},
+		{
+			"name": "Miner",
+			"available_processes": [
+				"Iron Ore Mining",
+				"Copper Ore Mining",
+				"Silica Mining",
+				"Coal Mining",
+				"Stone Mining"
+			],
+			"cost": [
+				{ "amount": 10.0, "resource": "Stone" },
+				{ "amount": 20.0, "resource": "Energy" }
+			]
+		},
+		{
+			"name": "Extractor",
+			"available_processes": ["Water Extraction", "Crude Oil Extraction"],
+			"cost": [
+				{ "amount": 10.0, "resource": "Stone" },
+				{ "amount": 20.0, "resource": "Energy" }
+			]
+		},
+		{
+			"name": "Smelter",
+			"available_processes": [
+				"Iron Ore Smelting",
+				"Copper Ore Smelting",
+				"Silica Processing",
+				"Magnet Production"
+			],
+			"cost": [
+				{ "amount": 10.0, "resource": "Stone" },
+				{ "amount": 20.0, "resource": "Energy" }
+			]
+		},
+		{
+			"name": "Oil Refinery",
+			"available_processes": ["Crude Oil Refinement"],
+			"cost": [
+				{ "amount": 10.0, "resource": "Stone" },
+				{ "amount": 20.0, "resource": "Energy" }
+			]
+		},
+		{
+			"name": "Assembler",
+			"available_processes": ["Magnet Production", "Silica Processing"],
+			"cost": [
+				{ "amount": 10.0, "resource": "Stone" },
+				{ "amount": 20.0, "resource": "Energy" }
+			]
+		},
+		{
+			"name": "Fabricator",
+			"available_processes": ["Electromagnet Production"],
+			"cost": [
+				{ "amount": 10.0, "resource": "Stone" },
+				{ "amount": 20.0, "resource": "Energy" }
+			]
+		}
+	]
+}

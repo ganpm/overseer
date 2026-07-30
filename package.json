@@ -1,11 +1,13 @@
 {
   "name": "overseer",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run build:web",
+    "build:web": "tsc -b && vite build",
+    "build:game": "wasm-pack build --target web",
     "lint": "eslint .",
     "preview": "vite preview"
   },

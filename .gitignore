@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 
 /misc
+
+# Added by cargo
+
+/target
+/pkg
