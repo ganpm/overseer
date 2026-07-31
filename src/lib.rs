@@ -192,4 +192,17 @@ impl Game {
         serde_wasm_bindgen::to_value(&self.catalog)
             .map_err(|err| JsValue::from_str(&format!("Failed to serialize catalog: {err}")))
     }
+
+    #[wasm_bindgen]
+    pub fn get_buildings(&self) -> Result<JsValue, JsValue> {
+        serde_wasm_bindgen::to_value(&self.buildings)
+            .map_err(|err| JsValue::from_str(&format!("Failed to serialize buildings: {err}")))
+    }
+
+    #[wasm_bindgen]
+    pub fn get_inventory(&self) -> Result<JsValue, JsValue> {
+        serde_wasm_bindgen::to_value(&self.inventory)
+            .map_err(|err| JsValue::from_str(&format!("Failed to serialize inventory: {err}")))
+    }
+
 }

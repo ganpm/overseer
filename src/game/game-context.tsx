@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   useEffect,
+  useRef,
 } from "react";
 
 import init, * as game from "../../pkg/overseer.js";
@@ -11,7 +12,12 @@ import gameData from "@/game/game-data.json";
 import { Spinner } from "@/components/ui/spinner.js";
 
 type GameExports = typeof game;
-type GameInstance = InstanceType<typeof game.Game>;
+type Inventory = Map<string, number>;
+type Buildings = Map<readonly [string, string], number>;
+type GameInstance = Omit<InstanceType<typeof game.Game>, "get_inventory" | "get_buildings"> & {
+  get_inventory(): Inventory;
+  get_buildings(): Buildings;
+};
 
 interface GameContextValue {
   wasm: GameExports;
@@ -24,8 +30,14 @@ interface GameProviderProps {
   children: React.ReactNode;
 }
 
+const FADE_MS = 500;
+
 export function GameProvider({ children }: GameProviderProps) {
   const [gameContextValue, setGameContextValue] = useState<GameContextValue | null>(null);
+
+  const [loaderVisible, setLoaderVisible] = useState(true);
+  const [loaderMounted, setLoaderMounted] = useState(true);
+  const fadeTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     async function loadGame() {
@@ -36,24 +48,44 @@ export function GameProvider({ children }: GameProviderProps) {
 
       setGameContextValue({
         wasm: game,
-        game: engine,
+        game: engine as GameInstance,
       });
+
+      setLoaderVisible(false);
+      fadeTimerRef.current = window.setTimeout(() => {
+        setLoaderMounted(false);
+      }, FADE_MS);
     }
+
     loadGame();
+
+    return () => {
+      if (fadeTimerRef.current !== null) {
+        window.clearTimeout(fadeTimerRef.current);
+      }
+    };
   }, []);
 
-  if (!gameContextValue) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <Spinner className="size-8" />
-      </div> 
-    );
-  }
-
   return (
-    <GameContext.Provider value={gameContextValue}>
-      {children}
-    </GameContext.Provider>
+    <>
+      {gameContextValue && (
+        <GameContext.Provider value={gameContextValue}>
+          {children}
+        </GameContext.Provider>
+      )}
+
+      {loaderMounted && (
+        <div
+          className={[
+            "fixed inset-0 z-50 flex items-center justify-center",
+            "bg-background transition-opacity duration-500",
+            loaderVisible ? "opacity-100" : "opacity-0 pointer-events-none",
+          ].join(" ")}
+        >
+          <Spinner className="size-8" />
+        </div> 
+      )}
+    </>
   );
 }
 
