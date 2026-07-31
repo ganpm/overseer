@@ -178,7 +178,7 @@ export const App = () => {
             <AccordionContent>
               <div>
                 {constructed_generators.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No power generators yet.</p>
+                  <p className="text-sm text-muted-foreground">No power generators built.</p>
                 ) : (
                   <div className="space-y-2">
                     {constructed_generators.map(([[buildingName, processName], count]) => {
@@ -226,7 +226,7 @@ export const App = () => {
             <AccordionContent>
               <div>
                 {constructed_consumers.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No production buildings yet.</p>
+                  <p className="text-sm text-muted-foreground">No production buildings built.</p>
                 ) : (
                   <div className="space-y-2">
                     {constructed_consumers.map(([[buildingName, processName], count]) => {
