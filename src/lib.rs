@@ -17,6 +17,8 @@ struct ResourceAmount {
 struct Process {
     name: String,
     duration: f64,
+    power_consumption: f64,
+    power_generation: f64,
     inputs: Vec<ResourceAmount>,
     outputs: Vec<ResourceAmount>,
 }
@@ -68,6 +70,18 @@ fn validate_catalog(catalog: &Catalog) -> Result<(), String> {
         }
         if process.duration <= 0.0 {
             return Err(format!("Process '{}' must have a positive duration", process.name));
+        }
+        if !process.power_consumption.is_finite() || process.power_consumption < 0.0 {
+            return Err(format!(
+                "Process '{}' must have a finite, non-negative power_consumption",
+                process.name
+            ));
+        }
+        if !process.power_generation.is_finite() || process.power_generation < 0.0 {
+            return Err(format!(
+                "Process '{}' must have a finite, non-negative power_generation",
+                process.name
+            ));
         }
 
         for input in &process.inputs {
@@ -138,6 +152,7 @@ fn validate_catalog(catalog: &Catalog) -> Result<(), String> {
 pub struct Game {
     inventory: HashMap<String, f64>,
     buildings: HashMap<(String, String), u32>,
+    processes: HashMap<String, Process>,
     pending_buildings: HashMap<(String, String), u32>,
     in_flight: HashMap<(String, String), InFlightBatch>,
     catalog: Catalog,
@@ -145,11 +160,7 @@ pub struct Game {
 
 impl Game {
     fn find_process(&self, process_name: &str) -> Option<Process> {
-        self.catalog
-            .processes
-            .iter()
-            .find(|process| process.name == process_name)
-            .cloned()
+        self.processes.get(process_name).cloned()
     }
 
     fn find_building(&self, building_name: &str) -> Option<&Building> {
@@ -221,6 +232,7 @@ impl Game {
         Game {
             inventory: HashMap::new(),
             buildings: HashMap::new(),
+            processes: HashMap::new(),
             pending_buildings: HashMap::new(),
             in_flight: HashMap::new(),
             catalog: Catalog {
@@ -243,7 +255,23 @@ impl Game {
         self.pending_buildings.clear();
         self.in_flight.clear();
 
+        self.processes = self
+            .catalog
+            .processes
+            .iter()
+            .map(|process| (process.name.clone(), process.clone()))
+            .collect();
+
         Ok(())
+    }
+
+    #[wasm_bindgen]
+    pub fn get_process(&self, process_name: &str) -> Result<JsValue, JsValue> {
+        let process = self.find_process(process_name)
+            .ok_or_else(|| JsValue::from_str(&format!("Unknown process '{process_name}'")))?;
+
+        serde_wasm_bindgen::to_value(&process)
+            .map_err(|err| JsValue::from_str(&format!("Failed to serialize process: {err}")))
     }
 
     #[wasm_bindgen]
@@ -335,6 +363,25 @@ impl Game {
             })
             .collect();
 
+        let mut total_power_generation = 0.0;
+        let mut total_power_consumption = 0.0;
+        for ((_, process_name), batch) in &self.in_flight {
+            let process = self
+                .find_process(process_name)
+                .ok_or_else(|| JsValue::from_str(&format!("Unknown process '{process_name}'")))?;
+
+            total_power_generation += process.power_generation * batch.count as f64;
+            total_power_consumption += process.power_consumption * batch.count as f64;
+        }
+
+        let consumer_power_scale = if total_power_consumption <= 0.0 {
+            1.0
+        } else {
+            (total_power_generation / total_power_consumption).clamp(0.0, 1.0)
+        };
+
+        let mut idle_entries: Vec<((String, String), u32, Process)> = Vec::new();
+
         for ((building_name, process_name), building_count) in building_entries {
             if building_count == 0 {
                 continue;
@@ -348,7 +395,13 @@ impl Game {
 
             let mut completed_jobs = 0;
             if let Some(batch) = self.in_flight.get_mut(&key) {
-                batch.remaining_seconds -= delta_seconds;
+                let process_scale = if process.power_consumption > 0.0 {
+                    consumer_power_scale
+                } else {
+                    1.0
+                };
+
+                batch.remaining_seconds -= delta_seconds * process_scale;
                 if batch.remaining_seconds <= 0.0 {
                     completed_jobs = batch.count;
                 }
@@ -362,23 +415,33 @@ impl Game {
             }
 
             if !self.in_flight.contains_key(&key) {
-                let pending = *self.pending_buildings.get(&key).unwrap_or(&0);
-                let available_capacity = building_count.saturating_sub(pending);
-                let startable_jobs = self.max_startable_jobs(&process, available_capacity);
-
-                if startable_jobs > 0 {
-                    self.consume_inputs(&process, startable_jobs);
-                    self.in_flight.insert(
-                        key,
-                        InFlightBatch {
-                            remaining_seconds: process.duration,
-                            count: startable_jobs,
-                        },
-                    );
-
-                    inventory_changed = true;
-                }
+                idle_entries.push((key, building_count, process));
             }
+        }
+
+        for (key, building_count, process) in &idle_entries {
+            if self.in_flight.contains_key(key) {
+                continue;
+            }
+
+            let pending = *self.pending_buildings.get(key).unwrap_or(&0);
+            let available_capacity = building_count.saturating_sub(pending);
+            let startable_jobs = self.max_startable_jobs(process, available_capacity);
+
+            if startable_jobs == 0 {
+                continue;
+            }
+
+            self.consume_inputs(process, startable_jobs);
+            self.in_flight.insert(
+                key.clone(),
+                InFlightBatch {
+                    remaining_seconds: process.duration,
+                    count: startable_jobs,
+                },
+            );
+
+            inventory_changed = true;
         }
 
         Ok(inventory_changed)

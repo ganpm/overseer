@@ -26,6 +26,9 @@ interface ResourceAmount {
 
 interface Process {
   name: string;
+  duration: number;
+  power_consumption: number;
+  power_generation: number;
   inputs: { resource: string; amount: number }[];
   outputs: { resource: string; amount: number }[];
 }
@@ -42,9 +45,10 @@ interface Catalog {
   buildings: Building[];
 }
 
-type GameInstance = Omit<InstanceType<typeof game.Game>, "get_inventory" | "get_buildings" | "tick" | "get_catalog"> & {
+type GameInstance = Omit<InstanceType<typeof game.Game>, "get_inventory" | "get_buildings" | "get_process" | "tick" | "get_catalog"> & {
   get_inventory(): Inventory;
   get_buildings(): Buildings;
+  get_process(process_name: string): Process;
   get_catalog(): Catalog;
   tick(delta_seconds: number): boolean;
 };

@@ -110,7 +110,7 @@ export const App = () => {
           {buildingRows.length === 0 ? (
             <p className="text-sm text-muted-foreground">No buildings yet.</p>
           ) : (
-            <>
+            <div className="space-y-2">
               {buildingRows.filter(([_, count]) => count > 0).map(([[buildingName, processName], count]) => (
                 <Item variant="outline" key={`${buildingName}-${processName}`}>
                   <ItemContent>
@@ -139,7 +139,7 @@ export const App = () => {
                   </ItemActions>
                 </Item>
               ))}
-            </>
+            </div>
           )}
         </div>
 
