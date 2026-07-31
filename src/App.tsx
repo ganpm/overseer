@@ -288,13 +288,18 @@ export const App = () => {
           {inventoryRows.length === 0 ? (
             <p className="text-sm text-muted-foreground">Inventory is empty.</p>
           ) : (
-            <ul className="space-y-1 text-sm">
+            <div className="space-y-2">
               {inventoryRows.map(([resourceName, amount]) => (
-                <li key={resourceName}>
-                  {resourceName}: {amount.toFixed(2)}
-                </li>
+                <Item variant="outline" key={resourceName}>
+                  <ItemContent>
+                    <ItemTitle>{resourceName}</ItemTitle>
+                  </ItemContent>
+                  <ItemActions>
+                    <span>{amount}</span>
+                  </ItemActions>
+                </Item>
               ))}
-            </ul>
+            </div>
           )}
         </div>
       </div>
