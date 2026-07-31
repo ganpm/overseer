@@ -73,6 +73,7 @@ interface GameSnapshot {
 interface GameActions {
   addResource(resourceName: string, amount: number): void;
   addBuilding(buildingName: string, processName: string, count: number): void;
+  removeBuilding(buildingName: string, processName: string, count: number): void;
 }
 
 interface GameContextValue {
@@ -107,8 +108,14 @@ export function GameProvider({ children }: GameProviderProps) {
   const accumulatorRef = useRef(0);
 
   useEffect(() => {
+    let disposed = false;
+
     async function loadGame() {
       await init();
+
+      if (disposed) {
+        return;
+      }
 
       const engine = new game.Game();
       engine.load_catalog(gameData);
@@ -131,6 +138,10 @@ export function GameProvider({ children }: GameProviderProps) {
       };
 
       const refreshSnapshot = () => {
+        if (disposed) {
+          return;
+        }
+
         setGameContextValue((currentValue) => {
           if (!currentValue) {
             return currentValue;
@@ -152,6 +163,10 @@ export function GameProvider({ children }: GameProviderProps) {
           engine.add_building(buildingName, processName, count);
           refreshSnapshot();
         },
+        removeBuilding(buildingName, processName, count) {
+          engine.remove_building(buildingName, processName, count);
+          refreshSnapshot();
+        },
       };
 
       setGameContextValue({
@@ -162,6 +177,10 @@ export function GameProvider({ children }: GameProviderProps) {
       });
 
       const frame = (timestamp: number) => {
+        if (disposed) {
+          return;
+        }
+
         if (lastFrameTsRef.current === null) {
           lastFrameTsRef.current = timestamp;
           rafRef.current = window.requestAnimationFrame(frame);
@@ -199,6 +218,10 @@ export function GameProvider({ children }: GameProviderProps) {
 
       setLoaderVisible(false);
       fadeTimerRef.current = window.setTimeout(() => {
+        if (disposed) {
+          return;
+        }
+
         setLoaderMounted(false);
       }, FADE_MS);
     }
@@ -206,13 +229,20 @@ export function GameProvider({ children }: GameProviderProps) {
     loadGame();
 
     return () => {
+      disposed = true;
+
       if (fadeTimerRef.current !== null) {
         window.clearTimeout(fadeTimerRef.current);
+        fadeTimerRef.current = null;
       }
 
       if (rafRef.current !== null) {
         window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
       }
+
+      lastFrameTsRef.current = null;
+      accumulatorRef.current = 0;
     };
   }, []);
 

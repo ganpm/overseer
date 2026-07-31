@@ -233,6 +233,85 @@ impl Game {
             *entry += produced;
         }
     }
+
+    fn apply_building_delta(&mut self, building_name: &str, process_name: &str, delta: i32) -> Result<(), JsValue> {
+        if delta == 0 {
+            return Err(JsValue::from_str("Building delta must be non-zero"));
+        }
+
+        // TODO: Can be optimized by using a HashSet for available_buildings
+        let building = self
+            .find_building(building_name)
+            .ok_or_else(|| JsValue::from_str(&format!("Unknown building '{building_name}'")))?;
+
+        // TODO: Can be optimized by using a HashSet for available_processes
+        if !building
+            .available_processes
+            .iter()
+            .any(|available| available == process_name)
+        {
+            return Err(JsValue::from_str(&format!(
+                "Building '{building_name}' does not support process '{process_name}'"
+            )));
+        }
+
+        // TODO: Can be optimized by using a HashSet for available_processes
+        if self.find_process(process_name).is_none() {
+            return Err(JsValue::from_str(&format!("Unknown process '{process_name}'")));
+        }
+
+        let key = (building_name.to_string(), process_name.to_string());
+        let current_count = *self.buildings.get(&key).unwrap_or(&0);
+
+        let next_count = if delta > 0 {
+            let amount = delta as u32;
+            current_count
+                .checked_add(amount)
+                .ok_or_else(|| JsValue::from_str("Building count overflow"))?
+        } else {
+            let amount = delta.unsigned_abs();
+            current_count.saturating_sub(amount)
+        };
+
+        if next_count == 0 {
+            self.buildings.remove(&key);
+        } else {
+            self.buildings.insert(key.clone(), next_count);
+        }
+
+        let had_running_cycle = self.in_flight_count(&key) > 0;
+
+        if had_running_cycle {
+            if delta > 0 {
+                let pending_entry = self.pending_buildings.entry(key.clone()).or_insert(0);
+                *pending_entry = pending_entry.saturating_add(delta as u32);
+            } else {
+                let mut remaining_to_remove = delta.unsigned_abs();
+
+                if let Some(pending_entry) = self.pending_buildings.get_mut(&key) {
+                    let removed_from_pending = (*pending_entry).min(remaining_to_remove);
+                    *pending_entry -= removed_from_pending;
+                    remaining_to_remove -= removed_from_pending;
+                }
+
+                if self.pending_buildings.get(&key).copied().unwrap_or(0) == 0 {
+                    self.pending_buildings.remove(&key);
+                }
+
+                if remaining_to_remove > 0 {
+                    if let Some(batch) = self.in_flight.get_mut(&key) {
+                        if batch.count <= remaining_to_remove {
+                            self.in_flight.remove(&key);
+                        } else {
+                            batch.count -= remaining_to_remove;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 
@@ -361,38 +440,22 @@ impl Game {
             return Err(JsValue::from_str("Building count must be greater than zero"));
         }
 
-        // TODO: Can be optimized by using a HashSet for available_buildings
-        let building = self
-            .find_building(building_name)
-            .ok_or_else(|| JsValue::from_str(&format!("Unknown building '{building_name}'")))?;
+        let delta = i32::try_from(count)
+            .map_err(|_| JsValue::from_str("Building count is too large"))?;
 
-        // TODO: Can be optimized by using a HashSet for available_processes
-        if !building
-            .available_processes
-            .iter()
-            .any(|available| available == process_name)
-        {
-            return Err(JsValue::from_str(&format!(
-                "Building '{building_name}' does not support process '{process_name}'"
-            )));
+        self.apply_building_delta(building_name, process_name, delta)
+    }
+
+    #[wasm_bindgen]
+    pub fn remove_building(&mut self, building_name: &str, process_name: &str, count: u32) -> Result<(), JsValue> {
+        if count == 0 {
+            return Err(JsValue::from_str("Building count must be greater than zero"));
         }
 
-        // TODO: Can be optimized by using a HashSet for available_processes
-        if self.find_process(process_name).is_none() {
-            return Err(JsValue::from_str(&format!("Unknown process '{process_name}'")));
-        }
+        let delta = i32::try_from(count)
+            .map_err(|_| JsValue::from_str("Building count is too large"))?;
 
-        let key = (building_name.to_string(), process_name.to_string());
-        let had_running_cycle = self.in_flight_count(&key) > 0;
-        let entry = self.buildings.entry(key.clone()).or_insert(0);
-        *entry += count;
-
-        if had_running_cycle {
-            let pending_entry = self.pending_buildings.entry(key).or_insert(0);
-            *pending_entry += count;
-        }
-
-        Ok(())
+        self.apply_building_delta(building_name, process_name, -delta)
     }
 
     #[wasm_bindgen]

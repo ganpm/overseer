@@ -27,6 +27,12 @@ import {
 } from "@/components/ui/item";
 import { Progress } from "@/components/ui/progress";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   Rewind as Slowest,
   SkipBack as Slow,
   Pause,
@@ -95,7 +101,8 @@ export const App = () => {
       <div
         className={cn(
           "flex flex-col items-start justify-center",
-          "mx-5 my-2"
+          "mx-5 my-2",
+          "max-w-2xl",
         )}
       >
         <DropdownMenu>
@@ -165,143 +172,155 @@ export const App = () => {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <div className="mt-4 w-full max-w-2xl">
-          <h2 className="mb-2 text-sm font-semibold">Power Generators</h2>
-          {constructed_generators.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No power generators yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {constructed_generators.map(([[buildingName, processName], count]) => {
-                const process = game.get_process(processName);
-                return (
-                  <Item variant="outline" key={`${buildingName}-${processName}`}>
-                    <ItemContent>
-                      <ItemTitle className="flex flex-col items-start">
-                        <span>{buildingName} &times; {count}</span>
-                        <span className="text-xs text-muted-foreground">{processName}</span>
-                      </ItemTitle>
-                      <Progress value={100} />
-                      <ItemDescription className="flex flex-col">
-                        {process.power_generation > 0 && (
-                          <span>
-                            <Power size={14} className="inline-block" /> +{process.power_generation * count} MW
-                          </span>
-                        )}
-                      </ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <Button
-                        variant="outline"
-                        onClick={() => actions.addBuilding(buildingName, processName, 1)}
-                      >
-                        <Plus />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={() => actions.addBuilding(buildingName, processName, -1)}
-                      >
-                        <Minus />
-                      </Button>
-                    </ItemActions>
-                  </Item>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-4 w-full max-w-2xl">
-          <h2 className="mb-2 text-sm font-semibold">Production Buildings</h2>
-          {constructed_consumers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No production buildings yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {constructed_consumers.map(([[buildingName, processName], count]) => {
-                const process = game.get_process(processName);
-                const progress = snapshot.processProgress.get(processProgressKey(buildingName, processName));
-                const progressPercent = progress?.progress_percent ?? 0;
-                const activeCount = progress?.active_count ?? 0;
-                const totalCount = progress?.total_count ?? count;
-                const efficiencyPercent = Math.round(progress?.efficiency_percent ?? 100);
-                return (
-                  <Item variant="outline" key={`${buildingName}-${processName}`}>
-                    <ItemContent>
-                      <ItemTitle className="flex flex-col items-start">
-                        <span>{buildingName} &times; {count}</span>
-                        <span className="text-xs text-muted-foreground">{processName}</span>
-                      </ItemTitle>
-                      <Progress value={progressPercent} />
-                      <ItemDescription className="flex flex-col">
-                        {process.inputs.length > 0 && (
-                          <span className="flex items-center gap-1">
-                            <Consumed size={16} className="inline-block" />
-                            {process.inputs.map((input) => `-${input.amount * count} ${input.resource}`).join(", ")}
-                          </span>
-                        )}
-                        {process.outputs.length > 0 && (
-                          process.outputs.map((output) => (
-                            <span key={`${buildingName}-${processName}-${output.resource}`} className="flex items-center gap-1">
-                              <Produced size={16} className="inline-block" /> +{output.amount * count} {output.resource}
-                            </span>
-                          ))
-                        )}
-                        {process.duration > 0 && (
-                          <span className="flex items-center gap-1">
-                            <CycleTime size={16} className="inline-block" /> {process.duration}s
-                          </span>
-                        )}
-                        {process.power_consumption > 0 && (
-                          <span className="flex items-center gap-1">
-                            <Power size={16} className="inline-block" /> -{process.power_consumption * count} MW
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1">
-                          <Efficiency size={16} /> {efficiencyPercent}% efficiency ({activeCount}/{totalCount} running)
-                        </span>
-                      </ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => actions.addBuilding(buildingName, processName, 1)}
-                      >
-                        <Plus />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => actions.addBuilding(buildingName, processName, -1)}
-                      >
-                        <Minus />
-                      </Button>
-                    </ItemActions>
-                  </Item>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-4 w-full max-w-2xl">
-          <h2 className="mb-2 text-sm font-semibold">Inventory</h2>
-          {inventoryRows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Inventory is empty.</p>
-          ) : (
-            <div className="space-y-2">
-              {inventoryRows.map(([resourceName, amount]) => (
-                <Item variant="outline" key={resourceName}>
-                  <ItemContent>
-                    <ItemTitle>{resourceName}</ItemTitle>
-                  </ItemContent>
-                  <ItemActions>
-                    <span>{amount}</span>
-                  </ItemActions>
-                </Item>
-              ))}
-            </div>
-          )}
-        </div>
+        <Accordion multiple defaultValue={["power-generators", "production-buildings", "inventory"]}>
+          <AccordionItem value="power-generators">
+            <AccordionTrigger>Power Generators</AccordionTrigger>
+            <AccordionContent>
+              <div>
+                {constructed_generators.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No power generators yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {constructed_generators.map(([[buildingName, processName], count]) => {
+                      const process = game.get_process(processName);
+                      return (
+                        <Item variant="outline" key={`${buildingName}-${processName}`}>
+                          <ItemContent>
+                            <ItemTitle className="flex flex-col items-start">
+                              <span>{buildingName} &times; {count}</span>
+                              <span className="text-xs text-muted-foreground">{processName}</span>
+                            </ItemTitle>
+                            <Progress value={100} />
+                            <ItemDescription className="flex flex-col">
+                              {process.power_generation > 0 && (
+                                <span>
+                                  <Power size={14} className="inline-block" /> +{process.power_generation * count} MW
+                                </span>
+                              )}
+                            </ItemDescription>
+                          </ItemContent>
+                          <ItemActions>
+                            <Button
+                              variant="outline"
+                              onClick={() => actions.addBuilding(buildingName, processName, 1)}
+                            >
+                              <Plus />
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              onClick={() => actions.removeBuilding(buildingName, processName, 1)}
+                            >
+                              <Minus />
+                            </Button>
+                          </ItemActions>
+                        </Item>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="production-buildings">
+            <AccordionTrigger>Production Buildings</AccordionTrigger>
+            <AccordionContent>
+              <div>
+                {constructed_consumers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No production buildings yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {constructed_consumers.map(([[buildingName, processName], count]) => {
+                      const process = game.get_process(processName);
+                      const progress = snapshot.processProgress.get(processProgressKey(buildingName, processName));
+                      const progressPercent = progress?.progress_percent ?? 0;
+                      const activeCount = progress?.active_count ?? 0;
+                      const totalCount = progress?.total_count ?? count;
+                      const efficiencyPercent = Math.round(progress?.efficiency_percent ?? 100);
+                      return (
+                        <Item variant="outline" key={`${buildingName}-${processName}`}>
+                          <ItemContent>
+                            <ItemTitle className="flex flex-col items-start">
+                              <span>{buildingName} &times; {count}</span>
+                              <span className="text-xs text-muted-foreground">{processName}</span>
+                            </ItemTitle>
+                            <Progress value={progressPercent} />
+                            <ItemDescription className="flex flex-col">
+                              {process.inputs.length > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <Consumed size={16} className="inline-block" />
+                                  {process.inputs.map((input) => `-${input.amount * count} ${input.resource}`).join(", ")}
+                                </span>
+                              )}
+                              {process.outputs.length > 0 && (
+                                process.outputs.map((output) => (
+                                  <span key={`${buildingName}-${processName}-${output.resource}`} className="flex items-center gap-1">
+                                    <Produced size={16} className="inline-block" /> +{output.amount * count} {output.resource}
+                                  </span>
+                                ))
+                              )}
+                              {process.duration > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <CycleTime size={16} className="inline-block" /> {process.duration}s
+                                </span>
+                              )}
+                              {process.power_consumption > 0 && (
+                                <span className="flex items-center gap-1">
+                                  <Power size={16} className="inline-block" /> -{process.power_consumption * count} MW
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1">
+                                <Efficiency size={16} /> {efficiencyPercent}% efficiency ({activeCount}/{totalCount} running)
+                              </span>
+                            </ItemDescription>
+                          </ItemContent>
+                          <ItemActions>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => actions.addBuilding(buildingName, processName, 1)}
+                            >
+                              <Plus />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => actions.removeBuilding(buildingName, processName, 1)}
+                            >
+                              <Minus />
+                            </Button>
+                          </ItemActions>
+                        </Item>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="inventory">
+            <AccordionTrigger>Inventory</AccordionTrigger>
+            <AccordionContent>
+              <div>
+                {inventoryRows.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Inventory is empty.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {inventoryRows.map(([resourceName, amount]) => (
+                      <Item variant="outline" key={resourceName}>
+                        <ItemContent>
+                          <ItemTitle>{resourceName}</ItemTitle>
+                        </ItemContent>
+                        <ItemActions>
+                          <span>{amount}</span>
+                        </ItemActions>
+                      </Item>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
     </div>
   );
