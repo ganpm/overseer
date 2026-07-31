@@ -230,7 +230,7 @@
 		},
 		{
 			"name": "Assembler",
-			"available_processes": ["Magnet Production", "Silica Processing"],
+			"available_processes": ["Magnet Production", "Copper Wire Production"],
 			"cost": [{ "amount": 10.0, "resource": "Stone" }]
 		},
 		{
