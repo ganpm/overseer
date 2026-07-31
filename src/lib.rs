@@ -35,6 +35,12 @@ struct Catalog {
     buildings: Vec<Building>,
 }
 
+#[derive(Clone)]
+struct InFlightBatch {
+    remaining_seconds: f64,
+    count: u32,
+}
+
 fn validate_catalog(catalog: &Catalog) -> Result<(), String> {
     let resource_names: HashSet<&str> = catalog.resources.iter().map(|resource| resource.name.as_str()).collect();
     let process_names: HashSet<&str> = catalog.processes.iter().map(|process| process.name.as_str()).collect();
@@ -132,7 +138,79 @@ fn validate_catalog(catalog: &Catalog) -> Result<(), String> {
 pub struct Game {
     inventory: HashMap<String, f64>,
     buildings: HashMap<(String, String), u32>,
+    pending_buildings: HashMap<(String, String), u32>,
+    in_flight: HashMap<(String, String), InFlightBatch>,
     catalog: Catalog,
+}
+
+impl Game {
+    fn find_process(&self, process_name: &str) -> Option<Process> {
+        self.catalog
+            .processes
+            .iter()
+            .find(|process| process.name == process_name)
+            .cloned()
+    }
+
+    fn find_building(&self, building_name: &str) -> Option<&Building> {
+        self.catalog
+            .buildings
+            .iter()
+            .find(|building| building.name == building_name)
+    }
+
+    fn in_flight_count(&self, key: &(String, String)) -> u32 {
+        self.in_flight
+            .get(key)
+            .map(|batch| batch.count)
+            .unwrap_or(0)
+    }
+
+    fn max_startable_jobs(&self, process: &Process, capacity: u32) -> u32 {
+        let mut startable = capacity;
+
+        for input in &process.inputs {
+            let available = *self.inventory.get(&input.resource).unwrap_or(&0.0);
+            let max_by_resource = (available / input.amount).floor();
+            if max_by_resource <= 0.0 {
+                return 0;
+            }
+
+            let max_by_resource_u32 = if max_by_resource > u32::MAX as f64 {
+                u32::MAX
+            } else {
+                max_by_resource as u32
+            };
+
+            startable = startable.min(max_by_resource_u32);
+            if startable == 0 {
+                return 0;
+            }
+        }
+
+        startable
+    }
+
+    fn consume_inputs(&mut self, process: &Process, jobs: u32) {
+        for input in &process.inputs {
+            let consumed = input.amount * jobs as f64;
+            let entry = self.inventory.entry(input.resource.clone()).or_insert(0.0);
+            *entry -= consumed;
+
+            // If the resource amount is very close to zero, set it to exactly zero to avoid floating-point precision issues.
+            if *entry < 1e-9 {
+                *entry = 0.0;
+            }
+        }
+    }
+
+    fn produce_outputs(&mut self, process: &Process, jobs: u32) {
+        for output in &process.outputs {
+            let produced = output.amount * jobs as f64;
+            let entry = self.inventory.entry(output.resource.clone()).or_insert(0.0);
+            *entry += produced;
+        }
+    }
 }
 
 
@@ -143,6 +221,8 @@ impl Game {
         Game {
             inventory: HashMap::new(),
             buildings: HashMap::new(),
+            pending_buildings: HashMap::new(),
+            in_flight: HashMap::new(),
             catalog: Catalog {
                 resources: Vec::new(),
                 processes: Vec::new(),
@@ -160,6 +240,8 @@ impl Game {
             .map_err(|err| JsValue::from_str(&format!("Catalog validation failed: {err}")))?;
 
         self.catalog = parsed_catalog;
+        self.pending_buildings.clear();
+        self.in_flight.clear();
 
         Ok(())
     }
@@ -178,11 +260,40 @@ impl Game {
 
     #[wasm_bindgen]
     pub fn add_building(&mut self, building_name: &str, process_name: &str, count: u32) -> Result<(), JsValue> {
-        let entry = self
-            .buildings
-            .entry((building_name.to_string(), process_name.to_string()))
-            .or_insert(0);
+        if count == 0 {
+            return Err(JsValue::from_str("Building count must be greater than zero"));
+        }
+
+        // TODO: Can be optimized by using a HashSet for available_buildings
+        let building = self
+            .find_building(building_name)
+            .ok_or_else(|| JsValue::from_str(&format!("Unknown building '{building_name}'")))?;
+
+        // TODO: Can be optimized by using a HashSet for available_processes
+        if !building
+            .available_processes
+            .iter()
+            .any(|available| available == process_name)
+        {
+            return Err(JsValue::from_str(&format!(
+                "Building '{building_name}' does not support process '{process_name}'"
+            )));
+        }
+
+        // TODO: Can be optimized by using a HashSet for available_processes
+        if self.find_process(process_name).is_none() {
+            return Err(JsValue::from_str(&format!("Unknown process '{process_name}'")));
+        }
+
+        let key = (building_name.to_string(), process_name.to_string());
+        let had_running_cycle = self.in_flight_count(&key) > 0;
+        let entry = self.buildings.entry(key.clone()).or_insert(0);
         *entry += count;
+
+        if had_running_cycle {
+            let pending_entry = self.pending_buildings.entry(key).or_insert(0);
+            *pending_entry += count;
+        }
 
         Ok(())
     }
@@ -203,6 +314,74 @@ impl Game {
     pub fn get_inventory(&self) -> Result<JsValue, JsValue> {
         serde_wasm_bindgen::to_value(&self.inventory)
             .map_err(|err| JsValue::from_str(&format!("Failed to serialize inventory: {err}")))
+    }
+
+    #[wasm_bindgen]
+    pub fn tick(&mut self, delta_seconds: f64) -> Result<bool, JsValue> {
+        if !delta_seconds.is_finite() {
+            return Err(JsValue::from_str("tick delta_seconds must be finite"));
+        }
+
+        if delta_seconds <= 0.0 {
+            return Ok(false);
+        }
+
+        let mut inventory_changed = false;
+        let building_entries: Vec<((String, String), u32)> = self
+            .buildings
+            .iter()
+            .map(|((building_name, process_name), count)| {
+                ((building_name.clone(), process_name.clone()), *count)
+            })
+            .collect();
+
+        for ((building_name, process_name), building_count) in building_entries {
+            if building_count == 0 {
+                continue;
+            }
+
+            let process = self
+                .find_process(&process_name)
+                .ok_or_else(|| JsValue::from_str(&format!("Unknown process '{process_name}'")))?;
+
+            let key = (building_name.clone(), process_name.clone());
+
+            let mut completed_jobs = 0;
+            if let Some(batch) = self.in_flight.get_mut(&key) {
+                batch.remaining_seconds -= delta_seconds;
+                if batch.remaining_seconds <= 0.0 {
+                    completed_jobs = batch.count;
+                }
+            }
+
+            if completed_jobs > 0 {
+                self.produce_outputs(&process, completed_jobs);
+                inventory_changed = true;
+                self.in_flight.remove(&key);
+                self.pending_buildings.remove(&key);
+            }
+
+            if !self.in_flight.contains_key(&key) {
+                let pending = *self.pending_buildings.get(&key).unwrap_or(&0);
+                let available_capacity = building_count.saturating_sub(pending);
+                let startable_jobs = self.max_startable_jobs(&process, available_capacity);
+
+                if startable_jobs > 0 {
+                    self.consume_inputs(&process, startable_jobs);
+                    self.in_flight.insert(
+                        key,
+                        InFlightBatch {
+                            remaining_seconds: process.duration,
+                            count: startable_jobs,
+                        },
+                    );
+
+                    inventory_changed = true;
+                }
+            }
+        }
+
+        Ok(inventory_changed)
     }
 
 }
