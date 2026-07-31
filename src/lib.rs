@@ -43,6 +43,17 @@ struct InFlightBatch {
     count: u32,
 }
 
+#[derive(Serialize, Clone)]
+struct ProcessProgress {
+    active_count: u32,
+    total_count: u32,
+    pending_count: u32,
+    duration_seconds: f64,
+    remaining_seconds: f64,
+    progress_percent: f64,
+    efficiency_percent: f64,
+}
+
 fn validate_catalog(catalog: &Catalog) -> Result<(), String> {
     let resource_names: HashSet<&str> = catalog.resources.iter().map(|resource| resource.name.as_str()).collect();
     let process_names: HashSet<&str> = catalog.processes.iter().map(|process| process.name.as_str()).collect();
@@ -275,6 +286,64 @@ impl Game {
     }
 
     #[wasm_bindgen]
+    pub fn get_process_progress(&self, building_name: &str, process_name: &str) -> Result<JsValue, JsValue> {
+        let process = self
+            .find_process(process_name)
+            .ok_or_else(|| JsValue::from_str(&format!("Unknown process '{process_name}'")))?;
+
+        let mut total_power_generation = 0.0;
+        let mut total_power_consumption = 0.0;
+        for ((_, in_flight_process_name), batch) in &self.in_flight {
+            let in_flight_process = self
+                .find_process(in_flight_process_name)
+                .ok_or_else(|| JsValue::from_str(&format!("Unknown process '{in_flight_process_name}'")))?;
+
+            total_power_generation += in_flight_process.power_generation * batch.count as f64;
+            total_power_consumption += in_flight_process.power_consumption * batch.count as f64;
+        }
+
+        let consumer_power_scale = if total_power_consumption <= 0.0 {
+            1.0
+        } else {
+            (total_power_generation / total_power_consumption).clamp(0.0, 1.0)
+        };
+
+        let key = (building_name.to_string(), process_name.to_string());
+        let total_count = *self.buildings.get(&key).unwrap_or(&0);
+        let pending_count = *self.pending_buildings.get(&key).unwrap_or(&0);
+
+        let (active_count, remaining_seconds, progress_percent) =
+            if let Some(batch) = self.in_flight.get(&key) {
+                let clamped_remaining = batch.remaining_seconds.clamp(0.0, process.duration);
+                let progressed = (process.duration - clamped_remaining).clamp(0.0, process.duration);
+                let progress_percent = if process.duration <= 0.0 {
+                    0.0
+                } else {
+                    (progressed / process.duration * 100.0).clamp(0.0, 100.0)
+                };
+
+                (batch.count, clamped_remaining, progress_percent)
+            } else {
+                (0, 0.0, 0.0)
+            };
+
+        serde_wasm_bindgen::to_value(&ProcessProgress {
+            active_count,
+            total_count,
+            pending_count,
+            duration_seconds: process.duration,
+            remaining_seconds,
+            progress_percent,
+            efficiency_percent: if process.power_consumption > 0.0 {
+                consumer_power_scale * 100.0
+            } else {
+                100.0
+            },
+        })
+        .map_err(|err| JsValue::from_str(&format!("Failed to serialize process progress: {err}")))
+    }
+
+    #[wasm_bindgen]
     pub fn add_resource(&mut self, resource_name: &str, amount: f64) -> Result<(), JsValue> {
         let entry = self.inventory.entry(resource_name.to_string()).or_insert(0.0);
         *entry += amount;
@@ -355,6 +424,7 @@ impl Game {
         }
 
         let mut inventory_changed = false;
+        let mut simulation_changed = false;
         let building_entries: Vec<((String, String), u32)> = self
             .buildings
             .iter()
@@ -402,6 +472,7 @@ impl Game {
                 };
 
                 batch.remaining_seconds -= delta_seconds * process_scale;
+                simulation_changed = true;
                 if batch.remaining_seconds <= 0.0 {
                     completed_jobs = batch.count;
                 }
@@ -441,10 +512,11 @@ impl Game {
                 },
             );
 
+            simulation_changed = true;
             inventory_changed = true;
         }
 
-        Ok(inventory_changed)
+        Ok(inventory_changed || simulation_changed)
     }
 
 }

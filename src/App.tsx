@@ -25,6 +25,7 @@ import {
   ItemDescription,
   ItemActions,
 } from "@/components/ui/item";
+import { Progress } from "@/components/ui/progress";
 import {
   Rewind as Slowest,
   SkipBack as Slow,
@@ -43,6 +44,7 @@ import { cn } from "@/lib/utils.ts";
 
 export const App = () => {
   const { game, snapshot, actions } = useGame();
+  const processProgressKey = (buildingName: string, processName: string) => `${buildingName}::${processName}`;
   const catalog = game.get_catalog();
   const available_generators = catalog.buildings.filter((building) =>
     building.available_processes.some((processName) => {
@@ -169,38 +171,41 @@ export const App = () => {
             <p className="text-sm text-muted-foreground">No power generators yet.</p>
           ) : (
             <div className="space-y-2">
-              {constructed_generators.map(([[buildingName, processName], count]) => (
-                <Item variant="outline" key={`${buildingName}-${processName}`}>
-                  <ItemContent>
-                    <ItemTitle>
-                      {buildingName} &times; {count}
-                    </ItemTitle>
-                    <ItemDescription>
-                      {processName}
-                      <br />
-                      {game.get_process(processName).power_generation > 0 && (
-                        <span>
-                          <Power size={14} className="inline-block" /> +{game.get_process(processName).power_generation*count} MW
-                        </span>
-                      )}
-                    </ItemDescription>
-                  </ItemContent>
-                  <ItemActions>
-                    <Button
-                      variant="outline"
-                      onClick={() => actions.addBuilding(buildingName, processName, 1)}
-                    >
-                      <Plus />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => actions.addBuilding(buildingName, processName, -1)}
-                    >
-                      <Minus />
-                    </Button>
-                  </ItemActions>
-                </Item>
-              ))}
+              {constructed_generators.map(([[buildingName, processName], count]) => {
+                const process = game.get_process(processName);
+                return (
+                  <Item variant="outline" key={`${buildingName}-${processName}`}>
+                    <ItemContent>
+                      <ItemTitle className="flex flex-col items-start">
+                        <span>{buildingName} &times; {count}</span>
+                        <span className="text-xs text-muted-foreground">{processName}</span>
+                      </ItemTitle>
+                      <Progress value={100} />
+                      <ItemDescription className="flex flex-col">
+                        {process.power_generation > 0 && (
+                          <span>
+                            <Power size={14} className="inline-block" /> +{process.power_generation * count} MW
+                          </span>
+                        )}
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <Button
+                        variant="outline"
+                        onClick={() => actions.addBuilding(buildingName, processName, 1)}
+                      >
+                        <Plus />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => actions.addBuilding(buildingName, processName, -1)}
+                      >
+                        <Minus />
+                      </Button>
+                    </ItemActions>
+                  </Item>
+                );
+              })}
             </div>
           )}
         </div>
@@ -213,6 +218,11 @@ export const App = () => {
             <div className="space-y-2">
               {constructed_consumers.map(([[buildingName, processName], count]) => {
                 const process = game.get_process(processName);
+                const progress = snapshot.processProgress.get(processProgressKey(buildingName, processName));
+                const progressPercent = progress?.progress_percent ?? 0;
+                const activeCount = progress?.active_count ?? 0;
+                const totalCount = progress?.total_count ?? count;
+                const efficiencyPercent = Math.round(progress?.efficiency_percent ?? 100);
                 return (
                   <Item variant="outline" key={`${buildingName}-${processName}`}>
                     <ItemContent>
@@ -220,6 +230,7 @@ export const App = () => {
                         <span>{buildingName} &times; {count}</span>
                         <span className="text-xs text-muted-foreground">{processName}</span>
                       </ItemTitle>
+                      <Progress value={progressPercent} />
                       <ItemDescription className="flex flex-col">
                         {process.inputs.length > 0 && (
                           <span className="flex items-center gap-1">
@@ -245,7 +256,7 @@ export const App = () => {
                           </span>
                         )}
                         <span className="flex items-center gap-1">
-                          <Efficiency size={16} />
+                          <Efficiency size={16} /> {efficiencyPercent}% efficiency ({activeCount}/{totalCount} running)
                         </span>
                       </ItemDescription>
                     </ItemContent>

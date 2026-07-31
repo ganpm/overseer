@@ -33,6 +33,16 @@ interface Process {
   outputs: { resource: string; amount: number }[];
 }
 
+interface ProcessProgress {
+  active_count: number;
+  total_count: number;
+  pending_count: number;
+  duration_seconds: number;
+  remaining_seconds: number;
+  progress_percent: number;
+  efficiency_percent: number;
+}
+
 interface Building {
   name: string;
   available_processes: string[];
@@ -49,6 +59,7 @@ type GameInstance = Omit<InstanceType<typeof game.Game>, "get_inventory" | "get_
   get_inventory(): Inventory;
   get_buildings(): Buildings;
   get_process(process_name: string): Process;
+  get_process_progress(building_name: string, process_name: string): ProcessProgress;
   get_catalog(): Catalog;
   tick(delta_seconds: number): boolean;
 };
@@ -56,6 +67,7 @@ type GameInstance = Omit<InstanceType<typeof game.Game>, "get_inventory" | "get_
 interface GameSnapshot {
   inventory: Inventory;
   buildings: Buildings;
+  processProgress: Map<string, ProcessProgress>;
 }
 
 interface GameActions {
@@ -80,6 +92,10 @@ const FADE_MS = 500;
 const FIXED_STEP_SECONDS = 1 / 60;
 const MAX_STEPS_PER_FRAME = 5;
 
+function toProcessProgressKey(buildingName: string, processName: string) {
+  return `${buildingName}::${processName}`;
+}
+
 export function GameProvider({ children }: GameProviderProps) {
   const [gameContextValue, setGameContextValue] = useState<GameContextValue | null>(null);
 
@@ -97,10 +113,22 @@ export function GameProvider({ children }: GameProviderProps) {
       const engine = new game.Game();
       engine.load_catalog(gameData);
 
-      const readSnapshot = (): GameSnapshot => ({
-        inventory: engine.get_inventory(),
-        buildings: engine.get_buildings(),
-      });
+      const readSnapshot = (): GameSnapshot => {
+        const inventory = engine.get_inventory() as Inventory;
+        const buildings = engine.get_buildings() as Buildings;
+        const processProgress = new Map(
+          Array.from(buildings.entries()).map(([[buildingName, processName], _count]) => [
+            toProcessProgressKey(buildingName, processName),
+            engine.get_process_progress(buildingName, processName),
+          ])
+        );
+
+        return {
+          inventory,
+          buildings,
+          processProgress,
+        };
+      };
 
       const refreshSnapshot = () => {
         setGameContextValue((currentValue) => {
