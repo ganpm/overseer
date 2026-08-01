@@ -128,3 +128,26 @@
     @apply font-sans;
     }
 }
+
+@keyframes progress-flow {
+  0% {
+    background-position: 0 0;
+  }
+
+  100% {
+    background-position: 1rem 0;
+  }
+}
+
+.progress-continuous {
+  background-color: var(--primary);
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--primary) 25%, white) 0,
+    color-mix(in oklch, var(--primary) 25%, white) 6px,
+    color-mix(in oklch, var(--primary) 75%, black) 6px,
+    color-mix(in oklch, var(--primary) 75%, black) 12px
+  );
+  background-size: 1rem 100%;
+  animation: progress-flow 0.8s linear infinite;
+}

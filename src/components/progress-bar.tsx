@@ -1,0 +1,33 @@
+export interface ProgressBarProps {
+  value: number;
+  mode?: "progress" | "continuous";
+  active?: boolean;
+}
+
+export function ProgressBar({
+  value,
+  mode = "progress",
+  active = true,
+}: ProgressBarProps) {
+  const percentage = Math.min(Math.max(value, 0), 100);
+  const isContinuous = mode === "continuous";
+  const fillWidth = isContinuous ? 100 : percentage;
+
+  return (
+    <div
+      className="relative flex h-1 w-full items-center overflow-x-hidden rounded-full bg-muted"
+    >
+      <div
+        className={[
+          "h-full transition-opacity",
+          isContinuous
+            ? "progress-continuous"
+            : "bg-primary",
+          active ? "opacity-100" : "opacity-55",
+        ].join(" ")}
+        style={{ width: `${fillWidth}%` }}
+      >
+      </div>
+    </div>
+  );
+}
