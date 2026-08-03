@@ -1,29 +1,40 @@
 import {
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { useState } from "react";
 
 import { OperationsView } from "@/features/operations-view";
 import { ProductionView } from "@/features/production-view";
 import { PowerGridView } from "@/features/power-grid-view";
 
+type TabValue = "operations" | "production" | "power-grid";
+
+const getPanelClassName = (isActive: boolean) =>
+  isActive
+    ? "visible relative"
+    : "invisible absolute inset-0 pointer-events-none";
+
 export const App = () => {
+  const [activeTab, setActiveTab] = useState<TabValue>("operations");
+
   return (
     <div className="md:max-w-lg w-full h-screen mx-auto">
-      <Tabs defaultValue="operations">
-        <TabsContent value="operations">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
+        <div className="relative flex-1 pb-16">
+          <div className={getPanelClassName(activeTab === "operations")}>
           <OperationsView />
-        </TabsContent>
+          </div>
 
-        <TabsContent value="production">
+          <div className={getPanelClassName(activeTab === "production")}>
           <ProductionView />
-        </TabsContent>
+          </div>
 
-        <TabsContent value="power-grid">
+          <div className={getPanelClassName(activeTab === "power-grid")}>
           <PowerGridView />
-        </TabsContent>
+          </div>
+        </div>
 
         <TabsList className="fixed bottom-0 z-50 md:max-w-lg w-full justify-center" variant="line">
           <TabsTrigger value="operations">Operations</TabsTrigger>

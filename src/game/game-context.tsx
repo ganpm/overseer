@@ -14,6 +14,7 @@ import { Spinner } from "@/components/ui/spinner.js";
 type GameExports = typeof game;
 type Inventory = Map<string, number>;
 type Buildings = Map<readonly [string, string], number>;
+type ResourceFlow = Map<string, ResourceFlowSample>;
 
 interface Resource {
   name: string;
@@ -43,6 +44,16 @@ interface ProcessProgress {
   efficiency_percent: number;
 }
 
+interface ResourceFlowSample {
+  produced: number;
+  consumed: number;
+}
+
+interface ResourceFlowHistory {
+  produced: number[];
+  consumed: number[];
+}
+
 interface Building {
   name: string;
   available_processes: string[];
@@ -55,12 +66,13 @@ interface Catalog {
   buildings: Building[];
 }
 
-type GameInstance = Omit<InstanceType<typeof game.Game>, "get_inventory" | "get_buildings" | "get_process" | "tick" | "get_catalog"> & {
+type GameInstance = Omit<InstanceType<typeof game.Game>, "get_inventory" | "get_buildings" | "get_process" | "tick" | "get_catalog" | "get_and_reset_resource_flow"> & {
   get_inventory(): Inventory;
   get_buildings(): Buildings;
   get_process(process_name: string): Process;
   get_process_progress(building_name: string, process_name: string): ProcessProgress;
   get_catalog(): Catalog;
+  get_and_reset_resource_flow(): ResourceFlow;
   tick(delta_seconds: number): boolean;
 };
 
@@ -68,6 +80,7 @@ interface GameSnapshot {
   inventory: Inventory;
   buildings: Buildings;
   processProgress: Map<string, ProcessProgress>;
+  resourceFlowHistory: Map<string, ResourceFlowHistory>;
 }
 
 interface GameActions {
@@ -92,6 +105,8 @@ interface GameProviderProps {
 const FADE_MS = 500;
 const FIXED_STEP_SECONDS = 1 / 60;
 const MAX_STEPS_PER_FRAME = 5;
+const FLOW_HISTORY_LENGTH = 60;
+const FLOW_SAMPLE_INTERVAL_MS = 1_000;
 
 function toProcessProgressKey(buildingName: string, processName: string) {
   return `${buildingName}::${processName}`;
@@ -106,6 +121,7 @@ export function GameProvider({ children }: GameProviderProps) {
   const rafRef = useRef<number | null>(null);
   const lastFrameTsRef = useRef<number | null>(null);
   const accumulatorRef = useRef(0);
+  const lastFlowSampleTsRef = useRef<number | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -117,10 +133,23 @@ export function GameProvider({ children }: GameProviderProps) {
         return;
       }
 
-      const engine = new game.Game();
+      const engine = new game.Game() as GameInstance;
       engine.load_catalog(gameData);
 
-      const readSnapshot = (): GameSnapshot => {
+      const catalogResourceNames = engine
+        .get_catalog()
+        .resources
+        .map((resource) => resource.name);
+
+      const createZeroFlowHistory = (): ResourceFlowHistory => ({
+        produced: Array.from({ length: FLOW_HISTORY_LENGTH }, () => 0),
+        consumed: Array.from({ length: FLOW_HISTORY_LENGTH }, () => 0),
+      });
+
+      const readSnapshot = (
+        previousHistory?: Map<string, ResourceFlowHistory>,
+        shouldSampleFlow = false
+      ): GameSnapshot => {
         const inventory = engine.get_inventory() as Inventory;
         const buildings = engine.get_buildings() as Buildings;
         const processProgress = new Map(
@@ -130,16 +159,71 @@ export function GameProvider({ children }: GameProviderProps) {
           ])
         );
 
+        const sampledResourceFlow = shouldSampleFlow
+          ? (engine.get_and_reset_resource_flow() as ResourceFlow)
+          : new Map<string, ResourceFlowSample>();
+
+        const trackedResourceNames = new Set<string>([
+          ...catalogResourceNames,
+          ...Array.from(previousHistory?.keys() ?? []),
+          ...Array.from(inventory.keys()),
+          ...Array.from(sampledResourceFlow.keys()),
+        ]);
+
+        const resourceFlowHistory = new Map<string, ResourceFlowHistory>();
+
+        for (const resourceName of trackedResourceNames) {
+          const previousSeries = previousHistory?.get(resourceName) ?? createZeroFlowHistory();
+          const nextSeries: ResourceFlowHistory = {
+            produced: [...previousSeries.produced],
+            consumed: [...previousSeries.consumed],
+          };
+
+          if (shouldSampleFlow) {
+            const sampledFlow = sampledResourceFlow.get(resourceName);
+            nextSeries.produced.push(Number((sampledFlow?.produced ?? 0).toFixed(2)));
+            nextSeries.consumed.push(Number((sampledFlow?.consumed ?? 0).toFixed(2)));
+          }
+
+          while (nextSeries.produced.length > FLOW_HISTORY_LENGTH) {
+            nextSeries.produced.shift();
+          }
+
+          while (nextSeries.consumed.length > FLOW_HISTORY_LENGTH) {
+            nextSeries.consumed.shift();
+          }
+
+          while (nextSeries.produced.length < FLOW_HISTORY_LENGTH) {
+            nextSeries.produced.unshift(0);
+          }
+
+          while (nextSeries.consumed.length < FLOW_HISTORY_LENGTH) {
+            nextSeries.consumed.unshift(0);
+          }
+
+          resourceFlowHistory.set(resourceName, nextSeries);
+        }
+
         return {
           inventory,
           buildings,
           processProgress,
+          resourceFlowHistory,
         };
       };
 
       const refreshSnapshot = () => {
         if (disposed) {
           return;
+        }
+
+        const now = Date.now();
+        const shouldSampleFlow =
+          lastFlowSampleTsRef.current === null
+          || now - lastFlowSampleTsRef.current >= FLOW_SAMPLE_INTERVAL_MS;
+
+        if (shouldSampleFlow) {
+          lastFlowSampleTsRef.current = now;
         }
 
         setGameContextValue((currentValue) => {
@@ -149,32 +233,31 @@ export function GameProvider({ children }: GameProviderProps) {
 
           return {
             ...currentValue,
-            snapshot: readSnapshot(),
+            snapshot: readSnapshot(currentValue.snapshot.resourceFlowHistory, shouldSampleFlow),
           };
         });
-      };
-
-      const actions: GameActions = {
-        addResource(resourceName, amount) {
-          engine.add_resource(resourceName, amount);
-          refreshSnapshot();
-        },
-        addBuilding(buildingName, processName, count) {
-          engine.add_building(buildingName, processName, count);
-          refreshSnapshot();
-        },
-        removeBuilding(buildingName, processName, count) {
-          engine.remove_building(buildingName, processName, count);
-          refreshSnapshot();
-        },
       };
 
       setGameContextValue({
         wasm: game,
         game: engine as GameInstance,
-        snapshot: readSnapshot(),
-        actions,
+        snapshot: readSnapshot(undefined, true),
+        actions: {
+          addResource(resourceName, amount) {
+            engine.add_resource(resourceName, amount);
+            refreshSnapshot();
+          },
+          addBuilding(buildingName, processName, count) {
+            engine.add_building(buildingName, processName, count);
+            refreshSnapshot();
+          },
+          removeBuilding(buildingName, processName, count) {
+            engine.remove_building(buildingName, processName, count);
+            refreshSnapshot();
+          },
+        },
       });
+      lastFlowSampleTsRef.current = Date.now();
 
       const frame = (timestamp: number) => {
         if (disposed) {
@@ -191,12 +274,12 @@ export function GameProvider({ children }: GameProviderProps) {
         lastFrameTsRef.current = timestamp;
         accumulatorRef.current += elapsedSeconds;
 
-        let anyInventoryChange = false;
+        let anySimulationChange = false;
         let stepCount = 0;
 
         while (accumulatorRef.current >= FIXED_STEP_SECONDS && stepCount < MAX_STEPS_PER_FRAME) {
           if (engine.tick(FIXED_STEP_SECONDS)) {
-            anyInventoryChange = true;
+            anySimulationChange = true;
           }
 
           accumulatorRef.current -= FIXED_STEP_SECONDS;
@@ -207,7 +290,12 @@ export function GameProvider({ children }: GameProviderProps) {
           accumulatorRef.current = accumulatorRef.current % FIXED_STEP_SECONDS;
         }
 
-        if (anyInventoryChange) {
+        const now = Date.now();
+        const shouldSampleFlow =
+          lastFlowSampleTsRef.current === null
+          || now - lastFlowSampleTsRef.current >= FLOW_SAMPLE_INTERVAL_MS;
+
+        if (anySimulationChange || shouldSampleFlow) {
           refreshSnapshot();
         }
 
@@ -243,6 +331,7 @@ export function GameProvider({ children }: GameProviderProps) {
 
       lastFrameTsRef.current = null;
       accumulatorRef.current = 0;
+      lastFlowSampleTsRef.current = null;
     };
   }, []);
 
@@ -263,7 +352,7 @@ export function GameProvider({ children }: GameProviderProps) {
           ].join(" ")}
         >
           <Spinner className="size-8" />
-        </div> 
+        </div>
       )}
     </>
   );

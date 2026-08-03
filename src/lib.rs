@@ -54,6 +54,12 @@ struct ProcessProgress {
     efficiency_percent: f64,
 }
 
+#[derive(Serialize, Deserialize, Clone, Default)]
+struct ResourceFlow {
+    produced: f64,
+    consumed: f64,
+}
+
 fn validate_catalog(catalog: &Catalog) -> Result<(), String> {
     let resource_names: HashSet<&str> = catalog.resources.iter().map(|resource| resource.name.as_str()).collect();
     let process_names: HashSet<&str> = catalog.processes.iter().map(|process| process.name.as_str()).collect();
@@ -167,6 +173,7 @@ pub struct Game {
     pending_buildings: HashMap<(String, String), u32>,
     in_flight: HashMap<(String, String), InFlightBatch>,
     catalog: Catalog,
+    resource_flow: HashMap<String, ResourceFlow>,
 }
 
 impl Game {
@@ -218,6 +225,10 @@ impl Game {
             let consumed = input.amount * jobs as f64;
             let entry = self.inventory.entry(input.resource.clone()).or_insert(0.0);
             *entry -= consumed;
+            self.resource_flow
+                .entry(input.resource.clone())
+                .or_default()
+                .consumed -= consumed;
 
             // If the resource amount is very close to zero, set it to exactly zero to avoid floating-point precision issues.
             if *entry < 1e-9 {
@@ -231,6 +242,10 @@ impl Game {
             let produced = output.amount * jobs as f64;
             let entry = self.inventory.entry(output.resource.clone()).or_insert(0.0);
             *entry += produced;
+            self.resource_flow
+                .entry(output.resource.clone())
+                .or_default()
+                .produced += produced;
         }
     }
 
@@ -330,6 +345,7 @@ impl Game {
                 processes: Vec::new(),
                 buildings: Vec::new(),
             },
+            resource_flow: HashMap::new(),
         }
     }
 
@@ -344,6 +360,7 @@ impl Game {
         self.catalog = parsed_catalog;
         self.pending_buildings.clear();
         self.in_flight.clear();
+        self.resource_flow.clear();
 
         self.processes = self
             .catalog
@@ -474,6 +491,18 @@ impl Game {
     pub fn get_inventory(&self) -> Result<JsValue, JsValue> {
         serde_wasm_bindgen::to_value(&self.inventory)
             .map_err(|err| JsValue::from_str(&format!("Failed to serialize inventory: {err}")))
+    }
+
+    #[wasm_bindgen]
+    pub fn get_and_reset_resource_flow(&mut self) -> Result<JsValue, JsValue> {
+        let flow = std::mem::take(&mut self.resource_flow);
+        for resource in &self.catalog.resources {
+            self.resource_flow
+                .insert(resource.name.clone(), ResourceFlow::default());
+        }
+
+        serde_wasm_bindgen::to_value(&flow)
+            .map_err(|err| JsValue::from_str(&format!("Failed to serialize resource flow: {err}")))
     }
 
     #[wasm_bindgen]

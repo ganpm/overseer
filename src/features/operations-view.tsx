@@ -129,7 +129,7 @@ export const OperationsView = () => {
   const sortedInventory = [...filteredInventory].sort((a, b) => sortFunction(a, b, sortOptionInventory));
 
   return (
-    <div className="flex flex-col mt-4 mx-4">
+    <div className="flex flex-col mt-4 mb-10 mx-4">
       <Accordion multiple defaultValue={["power-generators", "production-buildings", "inventory"]}>
         <AccordionItem value="power-generators">
           <AccordionTrigger>Power Generators</AccordionTrigger>
