@@ -211,12 +211,14 @@ export const OperationsView = () => {
                           <ProgressBar mode="continuous" value={100} active={running} />
                           <ItemDescription className="flex flex-col">
                             {process.power_generation > 0 && (
-                              <span>
-                                <Power size={14} className="inline-block" /> +{process.power_generation * count} MW
+                              <span className="flex items-center gap-1">
+                                <Power size={16} className="inline-block" />
+                                +{process.power_generation * count} MW
                               </span>
                             )}
                             <span className="flex items-center gap-1">
-                              <Efficiency size={16} /> {running ? "Online" : "Offline"} ({activeCount}/{totalCount} running)
+                              <Efficiency size={16} />
+                              {running ? "Online" : "Offline"} ({activeCount}/{totalCount} running)
                             </span>
                           </ItemDescription>
                         </ItemContent>
