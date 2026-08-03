@@ -108,7 +108,7 @@ interface GameProviderProps {
 const FADE_MS = 500;
 const FIXED_STEP_SECONDS = 1 / 60;
 const MAX_STEPS_PER_FRAME = 5;
-const UI_SNAPSHOT_INTERVAL_MS = 100;
+export const UI_SNAPSHOT_INTERVAL_MS = 40;
 const FLOW_SAMPLE_INTERVAL_MS = 1_000;
 
 function toProcessProgressKey(buildingName: string, processName: string) {
