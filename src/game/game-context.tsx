@@ -14,7 +14,6 @@ import { Spinner } from "@/components/ui/spinner.js";
 type GameExports = typeof game;
 type Inventory = Map<string, number>;
 type Buildings = Map<readonly [string, string], number>;
-type ResourceFlow = Map<string, ResourceFlowSample>;
 
 interface Resource {
   name: string;
@@ -44,14 +43,17 @@ interface ProcessProgress {
   efficiency_percent: number;
 }
 
-interface ResourceFlowSample {
+interface ProductionChartPoint {
+  label: string;
   produced: number;
   consumed: number;
 }
 
-interface ResourceFlowHistory {
-  produced: number[];
-  consumed: number[];
+interface ProductionChartSeries {
+  resource_name: string;
+  current_amount: number;
+  average_rate: number;
+  points: ProductionChartPoint[];
 }
 
 interface Building {
@@ -66,13 +68,14 @@ interface Catalog {
   buildings: Building[];
 }
 
-type GameInstance = Omit<InstanceType<typeof game.Game>, "get_inventory" | "get_buildings" | "get_process" | "tick" | "get_catalog" | "get_and_reset_resource_flow"> & {
+type GameInstance = Omit<InstanceType<typeof game.Game>, "get_inventory" | "get_buildings" | "get_process" | "tick" | "get_catalog" | "sample_resource_flow_history" | "get_production_chart_data"> & {
   get_inventory(): Inventory;
   get_buildings(): Buildings;
   get_process(process_name: string): Process;
   get_process_progress(building_name: string, process_name: string): ProcessProgress;
   get_catalog(): Catalog;
-  get_and_reset_resource_flow(): ResourceFlow;
+  sample_resource_flow_history(): void;
+  get_production_chart_data(): ProductionChartSeries[];
   tick(delta_seconds: number): boolean;
 };
 
@@ -80,7 +83,7 @@ interface GameSnapshot {
   inventory: Inventory;
   buildings: Buildings;
   processProgress: Map<string, ProcessProgress>;
-  resourceFlowHistory: Map<string, ResourceFlowHistory>;
+  productionChartData: ProductionChartSeries[];
 }
 
 interface GameActions {
@@ -105,7 +108,6 @@ interface GameProviderProps {
 const FADE_MS = 500;
 const FIXED_STEP_SECONDS = 1 / 60;
 const MAX_STEPS_PER_FRAME = 5;
-const FLOW_HISTORY_LENGTH = 60;
 const FLOW_SAMPLE_INTERVAL_MS = 1_000;
 
 function toProcessProgressKey(buildingName: string, processName: string) {
@@ -136,20 +138,7 @@ export function GameProvider({ children }: GameProviderProps) {
       const engine = new game.Game() as GameInstance;
       engine.load_catalog(gameData);
 
-      const catalogResourceNames = engine
-        .get_catalog()
-        .resources
-        .map((resource) => resource.name);
-
-      const createZeroFlowHistory = (): ResourceFlowHistory => ({
-        produced: Array.from({ length: FLOW_HISTORY_LENGTH }, () => 0),
-        consumed: Array.from({ length: FLOW_HISTORY_LENGTH }, () => 0),
-      });
-
-      const readSnapshot = (
-        previousHistory?: Map<string, ResourceFlowHistory>,
-        shouldSampleFlow = false
-      ): GameSnapshot => {
+      const readSnapshot = (shouldSampleFlow = false): GameSnapshot => {
         const inventory = engine.get_inventory() as Inventory;
         const buildings = engine.get_buildings() as Buildings;
         const processProgress = new Map(
@@ -159,56 +148,17 @@ export function GameProvider({ children }: GameProviderProps) {
           ])
         );
 
-        const sampledResourceFlow = shouldSampleFlow
-          ? (engine.get_and_reset_resource_flow() as ResourceFlow)
-          : new Map<string, ResourceFlowSample>();
-
-        const trackedResourceNames = new Set<string>([
-          ...catalogResourceNames,
-          ...Array.from(previousHistory?.keys() ?? []),
-          ...Array.from(inventory.keys()),
-          ...Array.from(sampledResourceFlow.keys()),
-        ]);
-
-        const resourceFlowHistory = new Map<string, ResourceFlowHistory>();
-
-        for (const resourceName of trackedResourceNames) {
-          const previousSeries = previousHistory?.get(resourceName) ?? createZeroFlowHistory();
-          const nextSeries: ResourceFlowHistory = {
-            produced: [...previousSeries.produced],
-            consumed: [...previousSeries.consumed],
-          };
-
-          if (shouldSampleFlow) {
-            const sampledFlow = sampledResourceFlow.get(resourceName);
-            nextSeries.produced.push(Number((sampledFlow?.produced ?? 0).toFixed(2)));
-            nextSeries.consumed.push(Number((sampledFlow?.consumed ?? 0).toFixed(2)));
-          }
-
-          while (nextSeries.produced.length > FLOW_HISTORY_LENGTH) {
-            nextSeries.produced.shift();
-          }
-
-          while (nextSeries.consumed.length > FLOW_HISTORY_LENGTH) {
-            nextSeries.consumed.shift();
-          }
-
-          while (nextSeries.produced.length < FLOW_HISTORY_LENGTH) {
-            nextSeries.produced.unshift(0);
-          }
-
-          while (nextSeries.consumed.length < FLOW_HISTORY_LENGTH) {
-            nextSeries.consumed.unshift(0);
-          }
-
-          resourceFlowHistory.set(resourceName, nextSeries);
+        if (shouldSampleFlow) {
+          engine.sample_resource_flow_history();
         }
+
+        const productionChartData = engine.get_production_chart_data() as ProductionChartSeries[];
 
         return {
           inventory,
           buildings,
           processProgress,
-          resourceFlowHistory,
+          productionChartData,
         };
       };
 
@@ -233,7 +183,7 @@ export function GameProvider({ children }: GameProviderProps) {
 
           return {
             ...currentValue,
-            snapshot: readSnapshot(currentValue.snapshot.resourceFlowHistory, shouldSampleFlow),
+            snapshot: readSnapshot(shouldSampleFlow),
           };
         });
       };
@@ -241,7 +191,7 @@ export function GameProvider({ children }: GameProviderProps) {
       setGameContextValue({
         wasm: game,
         game: engine as GameInstance,
-        snapshot: readSnapshot(undefined, true),
+        snapshot: readSnapshot(true),
         actions: {
           addResource(resourceName, amount) {
             engine.add_resource(resourceName, amount);

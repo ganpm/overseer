@@ -1,4 +1,3 @@
-import * as React from "react";
 import { CartesianGrid, Bar, BarChart, XAxis, YAxis, ReferenceLine } from "recharts";
 import { useGame } from "@/game/game-context.tsx";
 import {
@@ -24,22 +23,11 @@ import {
 
 export const description = "Produced and consumed amounts per second over the last minute"
 
-const FLOW_HISTORY_LENGTH = 60
-
 const toLocaleString = (number: number) => number.toLocaleString(undefined, { maximumFractionDigits: 2 })
-const averageRate = (produced: number[], consumed: number[]) => {
-  const totalProduced = produced.reduce((sum, value) => sum + value, 0)
-  const totalConsumed = consumed.reduce((sum, value) => sum + value, 0)
-  return (totalProduced - totalConsumed) / FLOW_HISTORY_LENGTH
-}
 
 export function ProductionView() {
   const { snapshot } = useGame()
-
-  const resourceEntries = React.useMemo(
-    () => Array.from(snapshot.resourceFlowHistory.entries()).sort(([a], [b]) => a.localeCompare(b)),
-    [snapshot.resourceFlowHistory]
-  )
+  const chartSeries = snapshot.productionChartData
 
   return (
     <div className="mx-4 mt-4 space-y-2 pb-16">
@@ -52,7 +40,7 @@ export function ProductionView() {
         </CardHeader>
       </Card>
 
-      {resourceEntries.length === 0 ? (
+      {chartSeries.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             No flow data yet. Start production to populate charts.
@@ -60,13 +48,8 @@ export function ProductionView() {
         </Card>
       ) : (
         <div className="flex flex-col space-y-2">
-          {resourceEntries.map(([resourceName, flowSeries]) => {
-            const currentAmount = snapshot.inventory.get(resourceName) ?? 0
-            const chartData = flowSeries.produced.map((produced, seriesIndex) => ({
-              label: `-${FLOW_HISTORY_LENGTH - 1 - seriesIndex}s`,
-              produced,
-              consumed: flowSeries.consumed[seriesIndex] ?? 0,
-            }))
+          {chartSeries.map((series) => {
+            const resourceName = series.resource_name
 
             const config = {
               produced: {
@@ -79,8 +62,8 @@ export function ProductionView() {
               },
             } satisfies ChartConfig
 
-            const currentAmountString = toLocaleString(currentAmount);
-            const averageRateValue = averageRate(flowSeries.produced, flowSeries.consumed);
+            const currentAmountString = toLocaleString(series.current_amount);
+            const averageRateValue = series.average_rate;
             const averageRateString = toLocaleString(averageRateValue);
             const trendIcon = averageRateValue > 0 ? <TrendingUp /> : averageRateValue < 0 ? <TrendingDown /> : <TrendingNeutral />;
 
@@ -105,7 +88,7 @@ export function ProductionView() {
                 <CardContent>
                   <ChartContainer config={config} className="h-30 w-full">
                     <BarChart
-                      data={chartData}
+                      data={series.points}
                       stackOffset="sign"
                     >
                       <CartesianGrid />

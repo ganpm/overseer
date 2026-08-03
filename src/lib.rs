@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use wasm_bindgen::prelude::*;
 
+const FLOW_HISTORY_LENGTH: usize = 60;
+
 #[derive(Serialize, Deserialize, Clone)]
 struct Resource {
     name: String,
@@ -58,6 +60,27 @@ struct ProcessProgress {
 struct ResourceFlow {
     produced: f64,
     consumed: f64,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct ResourceFlowHistory {
+    produced: Vec<f64>,
+    consumed: Vec<f64>,
+}
+
+#[derive(Serialize, Clone)]
+struct ProductionChartPoint {
+    label: String,
+    produced: f64,
+    consumed: f64,
+}
+
+#[derive(Serialize, Clone)]
+struct ProductionChartSeries {
+    resource_name: String,
+    current_amount: f64,
+    average_rate: f64,
+    points: Vec<ProductionChartPoint>,
 }
 
 fn validate_catalog(catalog: &Catalog) -> Result<(), String> {
@@ -174,9 +197,87 @@ pub struct Game {
     in_flight: HashMap<(String, String), InFlightBatch>,
     catalog: Catalog,
     resource_flow: HashMap<String, ResourceFlow>,
+    resource_flow_history: HashMap<String, ResourceFlowHistory>,
 }
 
 impl Game {
+    fn create_zero_flow_history() -> ResourceFlowHistory {
+        ResourceFlowHistory {
+            produced: vec![0.0; FLOW_HISTORY_LENGTH],
+            consumed: vec![0.0; FLOW_HISTORY_LENGTH],
+        }
+    }
+
+    fn normalize_flow_history(history: &mut ResourceFlowHistory) {
+        while history.produced.len() > FLOW_HISTORY_LENGTH {
+            history.produced.remove(0);
+        }
+
+        while history.consumed.len() > FLOW_HISTORY_LENGTH {
+            history.consumed.remove(0);
+        }
+
+        while history.produced.len() < FLOW_HISTORY_LENGTH {
+            history.produced.insert(0, 0.0);
+        }
+
+        while history.consumed.len() < FLOW_HISTORY_LENGTH {
+            history.consumed.insert(0, 0.0);
+        }
+    }
+
+    fn upsert_flow_sample(history: &mut ResourceFlowHistory, produced: f64, consumed: f64) {
+        history.produced.push((produced * 100.0).round() / 100.0);
+        history.consumed.push((consumed * 100.0).round() / 100.0);
+        Self::normalize_flow_history(history);
+    }
+
+    fn tracked_resource_names(&self) -> Vec<String> {
+        let mut tracked_resource_names = HashSet::<String>::new();
+
+        for resource in &self.catalog.resources {
+            tracked_resource_names.insert(resource.name.clone());
+        }
+
+        for resource_name in self.inventory.keys() {
+            tracked_resource_names.insert(resource_name.clone());
+        }
+
+        for resource_name in self.resource_flow.keys() {
+            tracked_resource_names.insert(resource_name.clone());
+        }
+
+        for resource_name in self.resource_flow_history.keys() {
+            tracked_resource_names.insert(resource_name.clone());
+        }
+
+        let mut resource_names = tracked_resource_names.into_iter().collect::<Vec<_>>();
+        resource_names.sort();
+        resource_names
+    }
+
+    fn sample_resource_flow_history_internal(&mut self) {
+        let sampled_flow = std::mem::take(&mut self.resource_flow);
+        let tracked_resource_names = self.tracked_resource_names();
+
+        for resource_name in tracked_resource_names {
+            let sampled = sampled_flow.get(&resource_name).cloned().unwrap_or_default();
+            let history = self
+                .resource_flow_history
+                .entry(resource_name.clone())
+                .or_insert_with(Self::create_zero_flow_history);
+
+            Self::upsert_flow_sample(history, sampled.produced, sampled.consumed);
+            self.resource_flow.insert(resource_name, ResourceFlow::default());
+        }
+    }
+
+    fn average_rate(produced: &[f64], consumed: &[f64]) -> f64 {
+        let total_produced: f64 = produced.iter().sum();
+        let total_consumed: f64 = consumed.iter().sum();
+        (total_produced - total_consumed) / FLOW_HISTORY_LENGTH as f64
+    }
+
     fn find_process(&self, process_name: &str) -> Option<Process> {
         self.processes.get(process_name).cloned()
     }
@@ -346,6 +447,7 @@ impl Game {
                 buildings: Vec::new(),
             },
             resource_flow: HashMap::new(),
+            resource_flow_history: HashMap::new(),
         }
     }
 
@@ -361,6 +463,14 @@ impl Game {
         self.pending_buildings.clear();
         self.in_flight.clear();
         self.resource_flow.clear();
+        self.resource_flow_history.clear();
+
+        for resource in &self.catalog.resources {
+            self.resource_flow
+                .insert(resource.name.clone(), ResourceFlow::default());
+            self.resource_flow_history
+                .insert(resource.name.clone(), Self::create_zero_flow_history());
+        }
 
         self.processes = self
             .catalog
@@ -503,6 +613,46 @@ impl Game {
 
         serde_wasm_bindgen::to_value(&flow)
             .map_err(|err| JsValue::from_str(&format!("Failed to serialize resource flow: {err}")))
+    }
+
+    #[wasm_bindgen]
+    pub fn sample_resource_flow_history(&mut self) {
+        self.sample_resource_flow_history_internal();
+    }
+
+    #[wasm_bindgen]
+    pub fn get_production_chart_data(&self) -> Result<JsValue, JsValue> {
+        let mut series = Vec::<ProductionChartSeries>::new();
+
+        for resource_name in self.tracked_resource_names() {
+            let history = self
+                .resource_flow_history
+                .get(&resource_name)
+                .cloned()
+                .unwrap_or_else(Self::create_zero_flow_history);
+
+            let points = history
+                .produced
+                .iter()
+                .zip(history.consumed.iter())
+                .enumerate()
+                .map(|(index, (produced, consumed))| ProductionChartPoint {
+                    label: format!("-{}s", FLOW_HISTORY_LENGTH - 1 - index),
+                    produced: *produced,
+                    consumed: *consumed,
+                })
+                .collect::<Vec<_>>();
+
+            series.push(ProductionChartSeries {
+                resource_name: resource_name.clone(),
+                current_amount: *self.inventory.get(&resource_name).unwrap_or(&0.0),
+                average_rate: Self::average_rate(&history.produced, &history.consumed),
+                points,
+            });
+        }
+
+        serde_wasm_bindgen::to_value(&series)
+            .map_err(|err| JsValue::from_str(&format!("Failed to serialize production chart data: {err}")))
     }
 
     #[wasm_bindgen]
