@@ -108,10 +108,21 @@ interface GameProviderProps {
 const FADE_MS = 500;
 const FIXED_STEP_SECONDS = 1 / 60;
 const MAX_STEPS_PER_FRAME = 5;
+const UI_SNAPSHOT_INTERVAL_MS = 100;
 const FLOW_SAMPLE_INTERVAL_MS = 1_000;
 
 function toProcessProgressKey(buildingName: string, processName: string) {
   return `${buildingName}::${processName}`;
+}
+
+function hasAnyActiveProcesses(processProgress: Map<string, ProcessProgress>) {
+  for (const progress of processProgress.values()) {
+    if (progress.active_count > 0) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export function GameProvider({ children }: GameProviderProps) {
@@ -124,6 +135,8 @@ export function GameProvider({ children }: GameProviderProps) {
   const lastFrameTsRef = useRef<number | null>(null);
   const accumulatorRef = useRef(0);
   const lastFlowSampleTsRef = useRef<number | null>(null);
+  const lastSnapshotPublishTsRef = useRef<number | null>(null);
+  const hasActiveProcessesRef = useRef(false);
 
   useEffect(() => {
     let disposed = false;
@@ -162,19 +175,37 @@ export function GameProvider({ children }: GameProviderProps) {
         };
       };
 
-      const refreshSnapshot = () => {
+      const refreshSnapshot = (options?: { force?: boolean }) => {
         if (disposed) {
           return;
         }
 
         const now = Date.now();
+        const shouldPublishSnapshot =
+          options?.force
+          || lastSnapshotPublishTsRef.current === null
+          || now - lastSnapshotPublishTsRef.current >= UI_SNAPSHOT_INTERVAL_MS;
         const shouldSampleFlow =
-          lastFlowSampleTsRef.current === null
-          || now - lastFlowSampleTsRef.current >= FLOW_SAMPLE_INTERVAL_MS;
+          hasActiveProcessesRef.current
+          && (
+            lastFlowSampleTsRef.current === null
+            || now - lastFlowSampleTsRef.current >= FLOW_SAMPLE_INTERVAL_MS
+          );
+
+        if (!shouldPublishSnapshot && !shouldSampleFlow) {
+          return;
+        }
 
         if (shouldSampleFlow) {
           lastFlowSampleTsRef.current = now;
         }
+
+        if (shouldPublishSnapshot) {
+          lastSnapshotPublishTsRef.current = now;
+        }
+
+        const nextSnapshot = readSnapshot(shouldSampleFlow);
+        hasActiveProcessesRef.current = hasAnyActiveProcesses(nextSnapshot.processProgress);
 
         setGameContextValue((currentValue) => {
           if (!currentValue) {
@@ -183,31 +214,35 @@ export function GameProvider({ children }: GameProviderProps) {
 
           return {
             ...currentValue,
-            snapshot: readSnapshot(shouldSampleFlow),
+            snapshot: nextSnapshot,
           };
         });
       };
 
+      const initialSnapshot = readSnapshot(true);
+      hasActiveProcessesRef.current = hasAnyActiveProcesses(initialSnapshot.processProgress);
+
       setGameContextValue({
         wasm: game,
         game: engine as GameInstance,
-        snapshot: readSnapshot(true),
+        snapshot: initialSnapshot,
         actions: {
           addResource(resourceName, amount) {
             engine.add_resource(resourceName, amount);
-            refreshSnapshot();
+            refreshSnapshot({ force: true });
           },
           addBuilding(buildingName, processName, count) {
             engine.add_building(buildingName, processName, count);
-            refreshSnapshot();
+            refreshSnapshot({ force: true });
           },
           removeBuilding(buildingName, processName, count) {
             engine.remove_building(buildingName, processName, count);
-            refreshSnapshot();
+            refreshSnapshot({ force: true });
           },
         },
       });
       lastFlowSampleTsRef.current = Date.now();
+      lastSnapshotPublishTsRef.current = Date.now();
 
       const frame = (timestamp: number) => {
         if (disposed) {
@@ -240,12 +275,7 @@ export function GameProvider({ children }: GameProviderProps) {
           accumulatorRef.current = accumulatorRef.current % FIXED_STEP_SECONDS;
         }
 
-        const now = Date.now();
-        const shouldSampleFlow =
-          lastFlowSampleTsRef.current === null
-          || now - lastFlowSampleTsRef.current >= FLOW_SAMPLE_INTERVAL_MS;
-
-        if (anySimulationChange || shouldSampleFlow) {
+        if (anySimulationChange || hasActiveProcessesRef.current) {
           refreshSnapshot();
         }
 
@@ -282,6 +312,8 @@ export function GameProvider({ children }: GameProviderProps) {
       lastFrameTsRef.current = null;
       accumulatorRef.current = 0;
       lastFlowSampleTsRef.current = null;
+      lastSnapshotPublishTsRef.current = null;
+      hasActiveProcessesRef.current = false;
     };
   }, []);
 

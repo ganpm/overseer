@@ -27,9 +27,11 @@ export const App = () => {
           <OperationsView />
           </div>
 
-          <div className={getPanelClassName(activeTab === "production")}>
-          <ProductionView />
-          </div>
+          {activeTab === "production" && (
+            <div className={getPanelClassName(true)}>
+            <ProductionView />
+            </div>
+          )}
 
           <div className={getPanelClassName(activeTab === "power-grid")}>
           <PowerGridView />
