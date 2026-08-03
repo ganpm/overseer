@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { UI_SNAPSHOT_INTERVAL_MS } from "@/game/game-context";
 
 export interface ProgressBarProps {
   value: number;
@@ -41,7 +42,7 @@ export function ProgressBar({
         ].join(" ")}
         style={{
           width: `${fillWidth}%`,
-          transition: animate ? "width 90ms linear" : "none",
+          transition: animate ? `width ${UI_SNAPSHOT_INTERVAL_MS}ms linear` : "none",
         }}
       >
       </div>
