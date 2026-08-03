@@ -27,7 +27,7 @@ const toLocaleString = (number: number) => number.toLocaleString(undefined, { ma
 
 export function ProductionView() {
   const { snapshot } = useGame()
-  const chartSeries = snapshot.productionChartData
+  const chartSeries = snapshot.productionChartData.filter((series => series.average_rate !== 0))
 
   return (
     <div className="mx-4 mt-4 space-y-2 pb-16">
@@ -48,7 +48,8 @@ export function ProductionView() {
         </Card>
       ) : (
         <div className="flex flex-col space-y-2">
-          {chartSeries.map((series) => {
+          {chartSeries
+            .map((series) => {
             const resourceName = series.resource_name
 
             const config = {
