@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+
 export interface ProgressBarProps {
   value: number;
   mode?: "progress" | "continuous";
@@ -9,6 +11,18 @@ export function ProgressBar({
   mode = "progress",
   active = true,
 }: ProgressBarProps) {
+  const previous = useRef(value);
+  const [animate, setAnimate] = useState(false);
+
+  useEffect(() => {
+    if (value >= previous.current) {
+      setAnimate(true);
+    } else {
+      setAnimate(false);
+    }
+    previous.current = value;
+  }, [value]);
+
   const percentage = Math.min(Math.max(value, 0), 100);
   const isContinuous = mode === "continuous";
   const fillWidth = isContinuous ? 100 : percentage;
@@ -25,7 +39,10 @@ export function ProgressBar({
             : "bg-primary",
           active ? "opacity-100" : "opacity-55",
         ].join(" ")}
-        style={{ width: `${fillWidth}%` }}
+        style={{
+          width: `${fillWidth}%`,
+          transition: animate ? "width 90ms linear" : "none",
+        }}
       >
       </div>
     </div>
