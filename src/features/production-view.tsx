@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { CartesianGrid, Bar, BarChart, XAxis, YAxis, ReferenceLine } from "recharts";
 import { useGame } from "@/game/game-context.tsx";
 import {
@@ -7,6 +8,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import {
   ChartContainer,
   ChartTooltip,
@@ -19,6 +25,7 @@ import {
   TrendingDown,
   MoveRight as TrendingNeutral,
   ChartNoAxesCombined as RateIcon,
+  Search,
 } from "lucide-react";
 
 export const description = "Produced and consumed amounts per second over the last minute"
@@ -28,6 +35,25 @@ const toLocaleString = (number: number) => number.toLocaleString(undefined, { ma
 export function ProductionView() {
   const { snapshot } = useGame()
   const chartSeries = snapshot.productionChartData.filter((series => series.average_rate !== 0))
+
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const queriedCharts = searchQuery.trim() === ""
+    ? chartSeries
+    : chartSeries.filter((series) =>
+        series.resource_name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+  const config = {
+    produced: {
+      label: "Produced",
+      color: "oklch(0.70 0.16 153)",
+    },
+    consumed: {
+      label: "Consumed",
+      color: "oklch(0.62 0.19 25)",
+    },
+  } satisfies ChartConfig
 
   return (
     <div className="mx-4 mt-4 space-y-2 pb-16">
@@ -39,35 +65,41 @@ export function ProductionView() {
           </CardDescription>
         </CardHeader>
       </Card>
-
+      <div className="flex gap-1">
+        <InputGroup>
+          <InputGroupInput
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <InputGroupAddon>
+            <Search />
+          </InputGroupAddon>
+          <InputGroupAddon align="inline-end">{queriedCharts.length} results</InputGroupAddon>
+        </InputGroup>
+      </div>
       {chartSeries.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
             No flow data yet. Start production to populate charts.
           </CardContent>
         </Card>
+      ) : queriedCharts.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            No charts match the search query.
+          </CardContent>
+        </Card>
       ) : (
         <div className="flex flex-col space-y-2">
-          {chartSeries
+          {queriedCharts
             .map((series) => {
             const resourceName = series.resource_name
-
-            const config = {
-              produced: {
-                label: "Produced",
-                color: "oklch(0.70 0.16 153)",
-              },
-              consumed: {
-                label: "Consumed",
-                color: "oklch(0.62 0.19 25)",
-              },
-            } satisfies ChartConfig
 
             const currentAmountString = toLocaleString(series.current_amount);
             const averageRateValue = series.average_rate;
             const averageRateString = toLocaleString(averageRateValue);
             const trendIcon = averageRateValue > 0 ? <TrendingUp /> : averageRateValue < 0 ? <TrendingDown /> : <TrendingNeutral />;
-
 
             return (
               <Card key={resourceName}>
@@ -78,10 +110,12 @@ export function ProductionView() {
                   <CardDescription>
                     <div className="flex gap-2">
                       <span className="flex items-center gap-1">
-                        <Package size={14} /> {currentAmountString}
+                        <Package size={14} />
+                        {currentAmountString}
                       </span>
                       <span className="flex items-center gap-1">
-                        <RateIcon size={14} /> {averageRateString}/s
+                        <RateIcon size={14} />
+                        {averageRateString}/s
                       </span>
                     </div>
                   </CardDescription>
