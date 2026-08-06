@@ -26,23 +26,67 @@ import {
   MoveRight as TrendingNeutral,
   ChartNoAxesCombined as RateIcon,
   Search,
+  ArrowDownAZ as AscendingNameIcon,
+  ArrowDownZA as DescendingNameIcon,
+  ArrowDown01 as AscendingAmountIcon,
+  ArrowDown10 as DescendingAmountIcon,
 } from "lucide-react";
+import {
+  SortDropdown,
+} from "@/components/sort-dropdown";
+import type { SortOption } from "@/components/sort-dropdown";
+import { filterAndSort } from "@/lib/filter-sort";
 
 export const description = "Produced and consumed amounts per second over the last minute"
 
 const toLocaleString = (number: number) => number.toLocaleString(undefined, { maximumFractionDigits: 2 })
 
+const isEffectivelyZero = (value: number) => Math.abs(value) < 1e-9;
+
+const hasAnyFlowInHistory = (series: { points: { produced: number; consumed: number }[] }) =>
+  series.points.some((point) => !isEffectivelyZero(point.produced) || !isEffectivelyZero(point.consumed));
+
 export function ProductionView() {
   const { snapshot } = useGame()
-  const chartSeries = snapshot.productionChartData.filter((series => series.average_rate !== 0))
+  const chartSeries = snapshot.productionChartData.filter((series) =>
+    !isEffectivelyZero(series.current_amount)
+    || !isEffectivelyZero(series.average_rate)
+    || hasAnyFlowInHistory(series)
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
 
-  const queriedCharts = searchQuery.trim() === ""
-    ? chartSeries
-    : chartSeries.filter((series) =>
-        series.resource_name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+  type SortOptions = "name-ascending" | "name-descending" | "amount-ascending" | "amount-descending";
+
+  const sortOptions: readonly SortOption<SortOptions>[] = [
+    { value: "name-ascending", label: "A-Z", icon: <AscendingNameIcon /> },
+    { value: "name-descending", label: "Z-A", icon: <DescendingNameIcon /> },
+    { value: "amount-ascending", label: "0-1", icon: <AscendingAmountIcon /> },
+    { value: "amount-descending", label: "1-0", icon: <DescendingAmountIcon /> },
+  ];
+
+  const [sortOption, setSortOption] = useState<SortOptions>("name-ascending");
+
+  const queriedCharts = filterAndSort(chartSeries, {
+    query: searchQuery,
+    filters: [
+      (series) => series.resource_name,
+    ],
+    sortFn: (a, b) => {
+      switch (sortOption) {
+        case "name-ascending":
+          return a.resource_name.localeCompare(b.resource_name);
+        case "name-descending":
+          return b.resource_name.localeCompare(a.resource_name);
+        case "amount-ascending":
+          return a.current_amount - b.current_amount;
+        case "amount-descending":
+          return b.current_amount - a.current_amount;
+        default:
+          return 0;
+      }
+    },
+  });
 
   const config = {
     produced: {
@@ -77,6 +121,11 @@ export function ProductionView() {
           </InputGroupAddon>
           <InputGroupAddon align="inline-end">{queriedCharts.length} results</InputGroupAddon>
         </InputGroup>
+        <SortDropdown
+          sort={sortOption}
+          setSort={setSortOption}
+          sortOptions={sortOptions}
+        />
       </div>
       {chartSeries.length === 0 ? (
         <Card>
@@ -94,7 +143,7 @@ export function ProductionView() {
         <div className="flex flex-col space-y-2">
           {queriedCharts
             .map((series) => {
-            const resourceName = series.resource_name
+            const resourceName = series.resource_name;
 
             const currentAmountString = toLocaleString(series.current_amount);
             const averageRateValue = series.average_rate;
