@@ -602,7 +602,7 @@ impl Game {
             let average_rate = {
                 let total_produced: f64 = history.produced.iter().sum();
                 let total_consumed: f64 = history.consumed.iter().sum();
-                (total_produced - total_consumed) / FLOW_HISTORY_LENGTH as f64
+                (total_produced + total_consumed) / FLOW_HISTORY_LENGTH as f64
             };
 
             series.push(ProductionChartSeries {
