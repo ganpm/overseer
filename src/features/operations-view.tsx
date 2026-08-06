@@ -35,7 +35,6 @@ import {
 import {
   SortDropdown,
 } from "@/components/sort-dropdown";
-import type { SortOption } from "@/components/sort-dropdown";
 import {
   Plus,
   Minus,
@@ -46,14 +45,11 @@ import {
   TrendingUp as Efficiency,
   Search,
   Hammer as Build,
-} from "lucide-react";
-import {
-  ArrowDownAZ as AscendingNameIcon,
-  ArrowDownZA as DescendingNameIcon,
-  ArrowDown01 as AscendingCountIcon,
-  ArrowDown10 as DescendingCountIcon,
+  MoveUp as DescendingIcon,
+  MoveDown as AscendingIcon,
 } from "lucide-react";
 import { filterAndSort } from "@/lib/filter-sort";
+import type { BuildingGroupInstance, InventoryEntry } from "pkg/overseer";
 
 export const OperationsView = () => {
   const { game, snapshot } = useGame();
@@ -80,21 +76,21 @@ export const OperationsView = () => {
 
   type SortOptionsBuildings = "name-ascending" | "name-descending" | "count-ascending" | "count-descending";
 
-  const sortOptionsBuildings: readonly SortOption<SortOptionsBuildings>[] = [
-    { value: "name-ascending", label: "A-Z", icon: <AscendingNameIcon /> },
-    { value: "name-descending", label: "Z-A", icon: <DescendingNameIcon /> },
-    { value: "count-ascending", label: "0-1", icon: <AscendingCountIcon /> },
-    { value: "count-descending", label: "1-0", icon: <DescendingCountIcon /> },
-  ];
+  const sortOptionsBuildings = new Map<SortOptionsBuildings, { label: string, icon: React.JSX.Element; sortFn: (a: BuildingGroupInstance, b: BuildingGroupInstance) => number}>([
+    ["name-ascending", { label: "Name", icon: <AscendingIcon />, sortFn: (a, b) => a.building_name.localeCompare(b.building_name) }],
+    ["name-descending", { label: "Name", icon: <DescendingIcon />, sortFn: (a, b) => b.building_name.localeCompare(a.building_name) }],
+    ["count-ascending", { label: "Count", icon: <AscendingIcon />, sortFn: (a, b) => a.total_count - b.total_count }],
+    ["count-descending", { label: "Count", icon: <DescendingIcon />, sortFn: (a, b) => b.total_count - a.total_count }],
+  ]);
 
   type SortOptionsInventory = "name-ascending" | "name-descending" | "amount-ascending" | "amount-descending";
 
-  const sortOptionsInventory: readonly SortOption<SortOptionsInventory>[] = [
-    { value: "name-ascending", label: "A-Z", icon: <AscendingNameIcon /> },
-    { value: "name-descending", label: "Z-A", icon: <DescendingNameIcon /> },
-    { value: "amount-ascending", label: "0-1", icon: <AscendingCountIcon /> },
-    { value: "amount-descending", label: "1-0", icon: <DescendingCountIcon /> },
-  ]
+  const sortOptionsInventory = new Map<SortOptionsInventory, { label: string, icon: React.JSX.Element; sortFn: (a: InventoryEntry, b: InventoryEntry) => number}>([
+    ["name-ascending", { label: "Name", icon: <AscendingIcon />, sortFn: (a, b) => a.resource.localeCompare(b.resource) }],
+    ["name-descending", { label: "Name", icon: <DescendingIcon />, sortFn: (a, b) => b.resource.localeCompare(a.resource) }],
+    ["amount-ascending", { label: "Amount", icon: <AscendingIcon />, sortFn: (a, b) => a.amount - b.amount }],
+    ["amount-descending", { label: "Amount", icon: <DescendingIcon />, sortFn: (a, b) => b.amount - a.amount }],
+  ]);
 
   const [sortOptionGenerator, setSortOptionGenerator] = useState<SortOptionsBuildings>("name-ascending");
   const [sortOptionProducer, setSortOptionProducer] = useState<SortOptionsBuildings>("name-ascending");
@@ -108,20 +104,7 @@ export const OperationsView = () => {
       (building) => building.process.inputs.map((input) => input.resource).join(" "),
       (building) => building.process.outputs.map((output) => output.resource).join(" "),
     ],
-    sortFn: (a, b) => {
-      switch (sortOptionGenerator) {
-        case "name-ascending":
-          return a.building_name.localeCompare(b.building_name);
-        case "name-descending":
-          return b.building_name.localeCompare(a.building_name);
-        case "count-ascending":
-          return a.total_count - b.total_count;
-        case "count-descending":
-          return b.total_count - a.total_count;
-        default:
-          return 0;
-      }
-    },
+    sortFn: (a, b) => sortOptionsBuildings.get(sortOptionGenerator)?.sortFn(a, b) ?? 0,
   });
 
   const producers = filterAndSort(constructedProducers, {
@@ -132,20 +115,7 @@ export const OperationsView = () => {
       (building) => building.process.inputs.map((input) => input.resource).join(" "),
       (building) => building.process.outputs.map((output) => output.resource).join(" "),
     ],
-    sortFn: (a, b) => {
-      switch (sortOptionProducer) {
-        case "name-ascending":
-          return a.building_name.localeCompare(b.building_name);
-        case "name-descending":
-          return b.building_name.localeCompare(a.building_name);
-        case "count-ascending":
-          return a.total_count - b.total_count;
-        case "count-descending":
-          return b.total_count - a.total_count;
-        default:
-          return 0;
-      }
-    },
+    sortFn: (a, b) => sortOptionsBuildings.get(sortOptionProducer)?.sortFn(a, b) ?? 0,
   });
 
   const inventory = filterAndSort(rawInventory, {
@@ -153,20 +123,7 @@ export const OperationsView = () => {
     filters: [
       (entry) => entry.resource,
     ],
-    sortFn: (a, b) => {
-      switch (sortOptionInventory) {
-        case "name-ascending":
-          return a.resource.localeCompare(b.resource);
-        case "name-descending":
-          return b.resource.localeCompare(a.resource);
-        case "amount-ascending":
-          return a.amount - b.amount;
-        case "amount-descending":
-          return b.amount - a.amount;
-        default:
-          return 0;
-      }
-    },
+    sortFn: (a, b) => sortOptionsInventory.get(sortOptionInventory)?.sortFn(a, b) ?? 0,
   });
 
   return (

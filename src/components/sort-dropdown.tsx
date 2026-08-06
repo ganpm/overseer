@@ -8,19 +8,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowUpDown as SortIcon,
+  ListSortDescending as SortIcon,
 } from "lucide-react";
-
-export interface SortOption<T extends string = string> {
-  value: T;
-  label: string;
-  icon: React.JSX.Element;
-}
 
 export interface SortDropdownProps<T extends string> {
   sort: T;
   setSort: (sort: T) => void;
-  sortOptions: readonly SortOption<T>[];
+  sortOptions: Map<T, { label: string; icon: React.JSX.Element, sortFn: (a: any, b: any) => number }>;
 }
 
 export function SortDropdown<T extends string>({
@@ -28,20 +22,18 @@ export function SortDropdown<T extends string>({
   setSort,
   sortOptions,
 }: SortDropdownProps<T>) {
-  const selectedOption = sortOptions.find((option) => option.value === sort);
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" />}>
-        {selectedOption?.icon ?? <SortIcon />}
+        <SortIcon />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuGroup>
           <DropdownMenuRadioGroup value={sort} onValueChange={setSort}>
-            {sortOptions.map((option) => (
-              <DropdownMenuRadioItem key={option.value} value={option.value} closeOnClick>
-                {option.icon}
-                {option.label}
+            {Array.from(sortOptions, ([value, { label, icon }]) => (
+              <DropdownMenuRadioItem key={value} value={value} closeOnClick>
+                {icon}
+                {label}
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>

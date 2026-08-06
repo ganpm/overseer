@@ -26,16 +26,14 @@ import {
   MoveRight as TrendingNeutral,
   ChartNoAxesCombined as RateIcon,
   Search,
-  ArrowDownAZ as AscendingNameIcon,
-  ArrowDownZA as DescendingNameIcon,
-  ArrowDown01 as AscendingAmountIcon,
-  ArrowDown10 as DescendingAmountIcon,
+  MoveUp as DescendingIcon,
+  MoveDown as AscendingIcon,
 } from "lucide-react";
 import {
   SortDropdown,
 } from "@/components/sort-dropdown";
-import type { SortOption } from "@/components/sort-dropdown";
 import { filterAndSort } from "@/lib/filter-sort";
+import type { ProductionChartSeries } from "pkg/overseer";
 
 export const description = "Produced and consumed amounts per second over the last minute"
 
@@ -58,12 +56,12 @@ export function ProductionView() {
 
   type SortOptions = "name-ascending" | "name-descending" | "amount-ascending" | "amount-descending";
 
-  const sortOptions: readonly SortOption<SortOptions>[] = [
-    { value: "name-ascending", label: "A-Z", icon: <AscendingNameIcon /> },
-    { value: "name-descending", label: "Z-A", icon: <DescendingNameIcon /> },
-    { value: "amount-ascending", label: "0-1", icon: <AscendingAmountIcon /> },
-    { value: "amount-descending", label: "1-0", icon: <DescendingAmountIcon /> },
-  ];
+  const sortOptions = new Map<SortOptions, { label: string; icon: React.JSX.Element; sortFn: (a: ProductionChartSeries, b: ProductionChartSeries) => number }>([
+    ["name-ascending", { label: "Name", icon: <AscendingIcon />, sortFn: (a, b) => a.resource_name.localeCompare(b.resource_name) }],
+    ["name-descending", { label: "Name", icon: <DescendingIcon />, sortFn: (a, b) => b.resource_name.localeCompare(a.resource_name) }],
+    ["amount-ascending", { label: "Amount", icon: <AscendingIcon />, sortFn: (a, b) => a.current_amount - b.current_amount }],
+    ["amount-descending", { label: "Amount", icon: <DescendingIcon />, sortFn: (a, b) => b.current_amount - a.current_amount }],
+  ]);
 
   const [sortOption, setSortOption] = useState<SortOptions>("name-ascending");
 
@@ -72,20 +70,7 @@ export function ProductionView() {
     filters: [
       (series) => series.resource_name,
     ],
-    sortFn: (a, b) => {
-      switch (sortOption) {
-        case "name-ascending":
-          return a.resource_name.localeCompare(b.resource_name);
-        case "name-descending":
-          return b.resource_name.localeCompare(a.resource_name);
-        case "amount-ascending":
-          return a.current_amount - b.current_amount;
-        case "amount-descending":
-          return b.current_amount - a.current_amount;
-        default:
-          return 0;
-      }
-    },
+    sortFn: (a, b) => sortOptions.get(sortOption)?.sortFn(a, b) ?? 0,
   });
 
   const config = {
