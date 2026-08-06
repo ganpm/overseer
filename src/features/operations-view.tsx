@@ -33,8 +33,11 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import {
-  SortDropdown,
-} from "@/components/sort-dropdown";
+  SortController,
+  type SortState,
+  type SortConfigMap,
+  sortDirectionMult,
+} from "@/components/sort-controller";
 import {
   Plus,
   Minus,
@@ -45,8 +48,6 @@ import {
   TrendingUp as Efficiency,
   Search,
   Hammer as Build,
-  MoveUp as DescendingIcon,
-  MoveDown as AscendingIcon,
 } from "lucide-react";
 import { filterAndSort } from "@/lib/filter-sort";
 import type { BuildingGroupInstance, InventoryEntry } from "pkg/overseer";
@@ -74,27 +75,61 @@ export const OperationsView = () => {
   const [searchQueryProducer, setSearchQueryProducer] = useState("");
   const [searchQueryInventory, setSearchQueryInventory] = useState("");
 
-  type SortOptionsBuildings = "name-ascending" | "name-descending" | "count-ascending" | "count-descending";
+  const [sortStateGenerator, setSortStateGenerator] = useState<SortState<BuildingGroupInstance>>({
+    field: "building_name",
+    direction: "ascending",
+  });
 
-  const sortOptionsBuildings = new Map<SortOptionsBuildings, { label: string, icon: React.JSX.Element; sortFn: (a: BuildingGroupInstance, b: BuildingGroupInstance) => number}>([
-    ["name-ascending", { label: "Name", icon: <AscendingIcon />, sortFn: (a, b) => a.building_name.localeCompare(b.building_name) }],
-    ["name-descending", { label: "Name", icon: <DescendingIcon />, sortFn: (a, b) => b.building_name.localeCompare(a.building_name) }],
-    ["count-ascending", { label: "Count", icon: <AscendingIcon />, sortFn: (a, b) => a.total_count - b.total_count }],
-    ["count-descending", { label: "Count", icon: <DescendingIcon />, sortFn: (a, b) => b.total_count - a.total_count }],
+  const sortConfigGenerator: SortConfigMap<BuildingGroupInstance> = new Map([
+    ["building_name", {
+      label: "Type",
+      sortFn: (a, b) => a.building_name.localeCompare(b.building_name),
+    }],
+    ["total_count", {
+      label: "Count",
+      sortFn: (a, b) => a.total_count - b.total_count,
+    }],
+    ["process", {
+      label: "Process",
+      sortFn: (a, b) => a.process.process_name.localeCompare(b.process.process_name),
+    }],
   ]);
 
-  type SortOptionsInventory = "name-ascending" | "name-descending" | "amount-ascending" | "amount-descending";
+  const [sortStateProducer, setSortStateProducer] = useState<SortState<BuildingGroupInstance>>({
+    field: "building_name",
+    direction: "ascending",
+  });
 
-  const sortOptionsInventory = new Map<SortOptionsInventory, { label: string, icon: React.JSX.Element; sortFn: (a: InventoryEntry, b: InventoryEntry) => number}>([
-    ["name-ascending", { label: "Name", icon: <AscendingIcon />, sortFn: (a, b) => a.resource.localeCompare(b.resource) }],
-    ["name-descending", { label: "Name", icon: <DescendingIcon />, sortFn: (a, b) => b.resource.localeCompare(a.resource) }],
-    ["amount-ascending", { label: "Amount", icon: <AscendingIcon />, sortFn: (a, b) => a.amount - b.amount }],
-    ["amount-descending", { label: "Amount", icon: <DescendingIcon />, sortFn: (a, b) => b.amount - a.amount }],
+  const sortConfigProducer: SortConfigMap<BuildingGroupInstance> = new Map([
+    ["building_name", {
+      label: "Type",
+      sortFn: (a, b) => a.building_name.localeCompare(b.building_name),
+    }],
+    ["total_count", {
+      label: "Count",
+      sortFn: (a, b) => a.total_count - b.total_count,
+    }],
+    ["process", {
+      label: "Process",
+      sortFn: (a, b) => a.process.process_name.localeCompare(b.process.process_name),
+    }],
   ]);
 
-  const [sortOptionGenerator, setSortOptionGenerator] = useState<SortOptionsBuildings>("name-ascending");
-  const [sortOptionProducer, setSortOptionProducer] = useState<SortOptionsBuildings>("name-ascending");
-  const [sortOptionInventory, setSortOptionInventory] = useState<SortOptionsInventory>("name-ascending");
+  const [sortStateInventory, setSortStateInventory] = useState<SortState<InventoryEntry>>({
+    field: "resource",
+    direction: "ascending",
+  });
+
+  const sortConfigInventory: SortConfigMap<InventoryEntry> = new Map([
+    ["resource", {
+      label: "Name",
+      sortFn: (a, b) => a.resource.localeCompare(b.resource),
+    }],
+    ["amount", {
+      label: "Amount",
+      sortFn: (a, b) => a.amount - b.amount,
+    }],
+  ]);
 
   const generators = filterAndSort(constructedGenerators, {
     query: searchQueryGenerator,
@@ -104,7 +139,7 @@ export const OperationsView = () => {
       (building) => building.process.inputs.map((input) => input.resource).join(" "),
       (building) => building.process.outputs.map((output) => output.resource).join(" "),
     ],
-    sortFn: (a, b) => sortOptionsBuildings.get(sortOptionGenerator)?.sortFn(a, b) ?? 0,
+    sortFn: (a, b) => (sortConfigGenerator.get(sortStateGenerator.field)?.sortFn(a, b) ?? 0) * sortDirectionMult[sortStateGenerator.direction],
   });
 
   const producers = filterAndSort(constructedProducers, {
@@ -115,7 +150,7 @@ export const OperationsView = () => {
       (building) => building.process.inputs.map((input) => input.resource).join(" "),
       (building) => building.process.outputs.map((output) => output.resource).join(" "),
     ],
-    sortFn: (a, b) => sortOptionsBuildings.get(sortOptionProducer)?.sortFn(a, b) ?? 0,
+    sortFn: (a, b) => (sortConfigProducer.get(sortStateProducer.field)?.sortFn(a, b) ?? 0) * sortDirectionMult[sortStateProducer.direction],
   });
 
   const inventory = filterAndSort(rawInventory, {
@@ -123,7 +158,7 @@ export const OperationsView = () => {
     filters: [
       (entry) => entry.resource,
     ],
-    sortFn: (a, b) => sortOptionsInventory.get(sortOptionInventory)?.sortFn(a, b) ?? 0,
+    sortFn: (a, b) => (sortConfigInventory.get(sortStateInventory.field)?.sortFn(a, b) ?? 0) * sortDirectionMult[sortStateInventory.direction],
   });
 
   return (
@@ -181,10 +216,10 @@ export const OperationsView = () => {
                   </InputGroupAddon>
                   <InputGroupAddon align="inline-end">{generators.length} results</InputGroupAddon>
                 </InputGroup>
-                <SortDropdown
-                  sort={sortOptionGenerator}
-                  setSort={setSortOptionGenerator}
-                  sortOptions={sortOptionsBuildings}
+                <SortController
+                  sortState={sortStateGenerator}
+                  onChange={setSortStateGenerator}
+                  config={sortConfigGenerator}
                 />
               </div>
               {constructedGenerators.length === 0 ? (
@@ -291,10 +326,10 @@ export const OperationsView = () => {
                   </InputGroupAddon>
                   <InputGroupAddon align="inline-end">{producers.length} results</InputGroupAddon>
                 </InputGroup>
-                <SortDropdown
-                  sort={sortOptionProducer}
-                  setSort={setSortOptionProducer}
-                  sortOptions={sortOptionsBuildings}
+                <SortController
+                  sortState={sortStateProducer}
+                  onChange={setSortStateProducer}
+                  config={sortConfigProducer}
                 />
               </div>
               {constructedProducers.length === 0 ? (
@@ -385,10 +420,10 @@ export const OperationsView = () => {
                   </InputGroupAddon>
                   <InputGroupAddon align="inline-end">{inventory.length} results</InputGroupAddon>
                 </InputGroup>
-                <SortDropdown
-                  sort={sortOptionInventory}
-                  setSort={setSortOptionInventory}
-                  sortOptions={sortOptionsInventory}
+                <SortController
+                  sortState={sortStateInventory}
+                  onChange={setSortStateInventory}
+                  config={sortConfigInventory}
                 />
               </div>
               {inventory.length === 0 ? (

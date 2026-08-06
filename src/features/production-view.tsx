@@ -26,12 +26,13 @@ import {
   MoveRight as TrendingNeutral,
   ChartNoAxesCombined as RateIcon,
   Search,
-  MoveUp as DescendingIcon,
-  MoveDown as AscendingIcon,
 } from "lucide-react";
 import {
-  SortDropdown,
-} from "@/components/sort-dropdown";
+  SortController,
+  type SortState,
+  type SortConfigMap,
+  sortDirectionMult,
+} from "@/components/sort-controller";
 import { filterAndSort } from "@/lib/filter-sort";
 import type { ProductionChartSeries } from "pkg/overseer";
 
@@ -41,7 +42,7 @@ const toLocaleString = (number: number) => number.toLocaleString(undefined, { ma
 
 const isEffectivelyZero = (value: number) => Math.abs(value) < 1e-9;
 
-const hasAnyFlowInHistory = (series: { points: { produced: number; consumed: number }[] }) =>
+const hasAnyFlowInHistory = (series: ProductionChartSeries) =>
   series.points.some((point) => !isEffectivelyZero(point.produced) || !isEffectivelyZero(point.consumed));
 
 export function ProductionView() {
@@ -54,23 +55,32 @@ export function ProductionView() {
 
   const [searchQuery, setSearchQuery] = useState("");
 
-  type SortOptions = "name-ascending" | "name-descending" | "amount-ascending" | "amount-descending";
-
-  const sortOptions = new Map<SortOptions, { label: string; icon: React.JSX.Element; sortFn: (a: ProductionChartSeries, b: ProductionChartSeries) => number }>([
-    ["name-ascending", { label: "Name", icon: <AscendingIcon />, sortFn: (a, b) => a.resource_name.localeCompare(b.resource_name) }],
-    ["name-descending", { label: "Name", icon: <DescendingIcon />, sortFn: (a, b) => b.resource_name.localeCompare(a.resource_name) }],
-    ["amount-ascending", { label: "Amount", icon: <AscendingIcon />, sortFn: (a, b) => a.current_amount - b.current_amount }],
-    ["amount-descending", { label: "Amount", icon: <DescendingIcon />, sortFn: (a, b) => b.current_amount - a.current_amount }],
+  const [sortStateCharts, setSortStateCharts] = useState<SortState<ProductionChartSeries>>({
+    field: "resource_name",
+    direction: "ascending",
+  });
+  
+  const sortConfigCharts: SortConfigMap<ProductionChartSeries> = new Map([
+    ["resource_name", {
+      label: "Resource",
+      sortFn: (a, b) => a.resource_name.localeCompare(b.resource_name),
+    }],
+    ["current_amount", {
+      label: "Amount",
+      sortFn: (a, b) => a.current_amount - b.current_amount,
+    }],
+    ["average_rate", {
+      label: "Average Rate",
+      sortFn: (a, b) => a.average_rate - b.average_rate,
+    }],
   ]);
-
-  const [sortOption, setSortOption] = useState<SortOptions>("name-ascending");
 
   const queriedCharts = filterAndSort(chartSeries, {
     query: searchQuery,
     filters: [
       (series) => series.resource_name,
     ],
-    sortFn: (a, b) => sortOptions.get(sortOption)?.sortFn(a, b) ?? 0,
+    sortFn: (a, b) => (sortConfigCharts.get(sortStateCharts.field)?.sortFn(a, b) ?? 0) * sortDirectionMult[sortStateCharts.direction]
   });
 
   const config = {
@@ -106,10 +116,10 @@ export function ProductionView() {
           </InputGroupAddon>
           <InputGroupAddon align="inline-end">{queriedCharts.length} results</InputGroupAddon>
         </InputGroup>
-        <SortDropdown
-          sort={sortOption}
-          setSort={setSortOption}
-          sortOptions={sortOptions}
+        <SortController
+          sortState={sortStateCharts}
+          onChange={setSortStateCharts}
+          config={sortConfigCharts}
         />
       </div>
       {chartSeries.length === 0 ? (
