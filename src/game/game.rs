@@ -372,8 +372,9 @@ impl Game {
                 // If this group is currently mid-cycle, new buildings join after completion.
                 building_group.pending_count = building_group.pending_count.saturating_add(delta);
             } else {
-                // If this group is idle, buildings are immediately available to start.
-                building_group.active_count = building_group.active_count.saturating_add(delta);
+                // If this group is idle, buildings must still wait for the next start check,
+                // which consumes inputs before any power generation is counted.
+                building_group.pending_count = building_group.pending_count.saturating_add(delta);
             }
         } else if let Some(building_group) = self.buildings.get_mut(&key) {
             let mut remaining_to_remove = count.unsigned_abs();
@@ -489,7 +490,12 @@ impl Game {
             }
 
             if building_group.active_count == 0 || completed_cycle {
-                let available_capacity = building_group.total_count.saturating_sub(building_group.pending_count);
+                let available_capacity = if building_group.active_count == 0 {
+                    // When idle, all buildings (including pending) are eligible to start.
+                    building_group.total_count
+                } else {
+                    building_group.total_count.saturating_sub(building_group.pending_count)
+                };
 
                 // Compute how many buildings can start based on available resources and capacity
                 let startable_processes: u32 = {
@@ -539,6 +545,10 @@ impl Game {
                     simulation_changed = true;
                 } else {
                     building_group.active_count = 0;
+                    if !completed_cycle {
+                        // Idle groups do not carry deferred-join state between ticks.
+                        building_group.pending_count = 0;
+                    }
                 }
             }
 
