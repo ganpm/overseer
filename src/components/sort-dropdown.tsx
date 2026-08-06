@@ -9,58 +9,31 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   ArrowUpDown as SortIcon,
-  ArrowDownAZ as AscendingNameIcon,
-  ArrowDownZA as DescendingNameIcon,
-  ArrowDown01 as AscendingCountIcon,
-  ArrowDown10 as DescendingCountIcon,
 } from "lucide-react";
 
-export type SortOption = "name-ascending" | "name-descending" | "count-ascending" | "count-descending";
-
-export interface SortDropdownProps {
-  sort: SortOption;
-  setSort: (sort: SortOption) => void;
+export interface SortOption<T extends string = string> {
+  value: T;
+  label: string;
+  icon: React.JSX.Element;
 }
 
-const sortIcons = {
-  "name-ascending": <AscendingNameIcon />,
-  "name-descending": <DescendingNameIcon />,
-  "count-ascending": <AscendingCountIcon />,
-  "count-descending": <DescendingCountIcon />,
-};
+export interface SortDropdownProps<T extends string> {
+  sort: T;
+  setSort: (sort: T) => void;
+  sortOptions: readonly SortOption<T>[];
+}
 
-const sortOptions = [
-  { value: "name-ascending", label: "A-Z", icon: <AscendingNameIcon /> },
-  { value: "name-descending", label: "Z-A", icon: <DescendingNameIcon /> },
-  { value: "count-ascending", label: "0-1", icon: <AscendingCountIcon /> },
-  { value: "count-descending", label: "1-0", icon: <DescendingCountIcon /> },
-];
-
-export function sortFunction(a: [string, number], b: [string, number], sortOption: SortOption) {
-  const [aName, aCount] = a;
-  const [bName, bCount] = b;
-  switch (sortOption) {
-    case "name-ascending":
-      return aName.localeCompare(bName);
-    case "name-descending":
-      return bName.localeCompare(aName);
-    case "count-ascending":
-      return aCount - bCount;
-    case "count-descending":
-      return bCount - aCount;
-    default:
-      return 0;
-  }
-};
-
-export function SortDropdown({
+export function SortDropdown<T extends string>({
   sort,
-  setSort
-}: SortDropdownProps) {
+  setSort,
+  sortOptions,
+}: SortDropdownProps<T>) {
+  const selectedOption = sortOptions.find((option) => option.value === sort);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" />}>
-        {sortIcons[sort] || <SortIcon />}
+        {selectedOption?.icon ?? <SortIcon />}
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuGroup>
