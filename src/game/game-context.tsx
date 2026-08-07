@@ -17,6 +17,11 @@ interface GameSnapshot {
   productionChartData: wasm.ProductionChartSeries[];
 }
 
+interface CoreSnapshot {
+  inventory: wasm.InventoryEntry[];
+  buildings: wasm.BuildingGroupInstance[];
+}
+
 interface GameContextValue {
   game: wasm.Game;
   snapshot: GameSnapshot;
@@ -45,6 +50,20 @@ function hasAnyActiveProcesses(buildings: wasm.BuildingGroupInstance[]) {
   return false;
 }
 
+function getBuildingStateToken(buildings: wasm.BuildingGroupInstance[]) {
+  const sorted = [...buildings].sort((a, b) => {
+    const aKey = `${a.building_name}::${a.process.process_name}`;
+    const bKey = `${b.building_name}::${b.process.process_name}`;
+    return aKey.localeCompare(bKey);
+  });
+
+  return sorted
+    .map(
+      (building) => `${building.building_name}::${building.process.process_name}:${building.total_count}:${building.active_count}:${building.pending_count}`,
+    )
+    .join("|");
+}
+
 export function GameProvider({ children }: GameProviderProps) {
   const [gameContextValue, setGameContextValue] = useState<GameContextValue | null>(null);
 
@@ -57,6 +76,7 @@ export function GameProvider({ children }: GameProviderProps) {
   const lastFlowSampleTsRef = useRef<number | null>(null);
   const lastSnapshotPublishTsRef = useRef<number | null>(null);
   const hasActiveProcessesRef = useRef(false);
+  const lastBuildingStateTokenRef = useRef("");
 
   useEffect(() => {
     let disposed = false;
@@ -70,22 +90,10 @@ export function GameProvider({ children }: GameProviderProps) {
 
       const game = new wasm.Game(gameData);
 
-      const readSnapshot = (shouldSampleFlow = false): GameSnapshot => {
-        const inventory = game.inventory;
-        const buildings = game.buildings;
-
-        if (shouldSampleFlow) {
-          game.sampleResourceFlowHistory();
-        }
-
-        const productionChartData = game.getProductionChartSeries();
-
-        return {
-          inventory,
-          buildings,
-          productionChartData,
-        };
-      };
+      const readCoreSnapshot = (): CoreSnapshot => ({
+        inventory: game.inventory,
+        buildings: game.buildings,
+      });
 
       const refreshSnapshot = (options?: { force?: boolean }) => {
         if (disposed) {
@@ -116,8 +124,17 @@ export function GameProvider({ children }: GameProviderProps) {
           lastSnapshotPublishTsRef.current = now;
         }
 
-        const nextSnapshot = readSnapshot(shouldSampleFlow);
-        hasActiveProcessesRef.current = hasAnyActiveProcesses(nextSnapshot.buildings);
+        if (shouldSampleFlow) {
+          game.sampleResourceFlowHistory();
+        }
+
+        const coreSnapshot = readCoreSnapshot();
+        const nextProductionChartData = shouldSampleFlow
+          ? game.getProductionChartSeries()
+          : null;
+
+        hasActiveProcessesRef.current = hasAnyActiveProcesses(coreSnapshot.buildings);
+        lastBuildingStateTokenRef.current = getBuildingStateToken(coreSnapshot.buildings);
 
         setGameContextValue((currentValue) => {
           if (!currentValue) {
@@ -126,13 +143,24 @@ export function GameProvider({ children }: GameProviderProps) {
 
           return {
             ...currentValue,
-            snapshot: nextSnapshot,
+            snapshot: {
+              inventory: coreSnapshot.inventory,
+              buildings: coreSnapshot.buildings,
+              productionChartData: nextProductionChartData ?? currentValue.snapshot.productionChartData,
+            },
           };
         });
       };
 
-      const initialSnapshot = readSnapshot(true);
-      hasActiveProcessesRef.current = hasAnyActiveProcesses(initialSnapshot.buildings);
+      game.sampleResourceFlowHistory();
+      const initialCoreSnapshot = readCoreSnapshot();
+      const initialSnapshot: GameSnapshot = {
+        inventory: initialCoreSnapshot.inventory,
+        buildings: initialCoreSnapshot.buildings,
+        productionChartData: game.getProductionChartSeries(),
+      };
+      hasActiveProcessesRef.current = hasAnyActiveProcesses(initialCoreSnapshot.buildings);
+      lastBuildingStateTokenRef.current = getBuildingStateToken(initialCoreSnapshot.buildings);
 
       setGameContextValue({
         game,
@@ -174,6 +202,11 @@ export function GameProvider({ children }: GameProviderProps) {
 
         if (anySimulationChange || hasActiveProcessesRef.current) {
           refreshSnapshot();
+        } else {
+          const buildingStateToken = getBuildingStateToken(game.buildings);
+          if (buildingStateToken !== lastBuildingStateTokenRef.current) {
+            refreshSnapshot({ force: true });
+          }
         }
 
         rafRef.current = window.requestAnimationFrame(frame);
@@ -211,6 +244,7 @@ export function GameProvider({ children }: GameProviderProps) {
       lastFlowSampleTsRef.current = null;
       lastSnapshotPublishTsRef.current = null;
       hasActiveProcessesRef.current = false;
+      lastBuildingStateTokenRef.current = "";
     };
   }, []);
 
