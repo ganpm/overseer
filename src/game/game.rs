@@ -1,7 +1,7 @@
-use wasm_bindgen::prelude::*;
-use tsify::Tsify;
 use serde::{Deserialize, Serialize};
-use std::{collections::{HashMap, HashSet, VecDeque}};
+use std::collections::{HashMap, HashSet, VecDeque};
+use tsify::Tsify;
+use wasm_bindgen::prelude::*;
 
 const FLOW_HISTORY_LENGTH: usize = 60;
 
@@ -66,7 +66,7 @@ pub struct BuildingGroupInstance {
     process: ProcessInstance,
     total_count: u32,
     /// The number of buildings running the process.
-    /// Some buildings will not be active if there are not enough resources to run the process. 
+    /// Some buildings will not be active if there are not enough resources to run the process.
     active_count: u32,
     /// The number of buildings that are pending construction.
     /// A building added to a building group is considered pending
@@ -97,11 +97,9 @@ pub struct JSONGameData {
     buildings: Vec<Building>,
 }
 
-
 /// Represents the state of the game, including the player's inventory, constructed buildings, and available processes.
 #[wasm_bindgen]
 pub struct Game {
-
     /// The current inventory.
     /// Uses the resource name to keep track of the quantity of that resource in the inventory.
     /// Represented as a HashMap for efficient lookups and updates of item quantities.
@@ -118,14 +116,24 @@ pub struct Game {
 
     /// Lookup table for all the data loaded into the game.
     data: GameData,
-
 }
 
-
 fn validate_data(data: &JSONGameData) -> Result<(), String> {
-    let resource_names: HashSet<&str> = data.resources.iter().map(|resource| resource.name.as_str()).collect();
-    let process_names: HashSet<&str> = data.processes.iter().map(|process| process.name.as_str()).collect();
-    let building_names: HashSet<&str> = data.buildings.iter().map(|building| building.name.as_str()).collect();
+    let resource_names: HashSet<&str> = data
+        .resources
+        .iter()
+        .map(|resource| resource.name.as_str())
+        .collect();
+    let process_names: HashSet<&str> = data
+        .processes
+        .iter()
+        .map(|process| process.name.as_str())
+        .collect();
+    let building_names: HashSet<&str> = data
+        .buildings
+        .iter()
+        .map(|building| building.name.as_str())
+        .collect();
 
     if resource_names.len() != data.resources.len() {
         return Err("Duplicate resource names found in catalog".to_string());
@@ -148,7 +156,10 @@ fn validate_data(data: &JSONGameData) -> Result<(), String> {
             return Err("Process name cannot be empty".to_string());
         }
         if process.duration <= 0.0 {
-            return Err(format!("Process '{}' must have a positive duration", process.name));
+            return Err(format!(
+                "Process '{}' must have a positive duration",
+                process.name
+            ));
         }
         if !process.power_consumption.is_finite() || process.power_consumption < 0.0 {
             return Err(format!(
@@ -227,7 +238,6 @@ fn validate_data(data: &JSONGameData) -> Result<(), String> {
     Ok(())
 }
 
-
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
 pub struct GameData {
@@ -269,16 +279,27 @@ pub struct RateHistoryEntry {
 
 #[wasm_bindgen]
 impl Game {
-
     #[wasm_bindgen(constructor)]
     pub fn new(data: JSONGameData) -> Result<Game, JsValue> {
         validate_data(&data)
             .map_err(|err| JsValue::from_str(&format!("Game data validation failed: {err}")))?;
 
-        let resources = data.resources.into_iter().map(|r| (r.name.clone(), r)).collect::<HashMap<_, _>>();
-        let processes = data.processes.into_iter().map(|p| (p.name.clone(), p)).collect::<HashMap<_, _>>();
-        let buildings = data.buildings.into_iter().map(|b| (b.name.clone(), b)).collect::<HashMap<_, _>>();
-        
+        let resources = data
+            .resources
+            .into_iter()
+            .map(|r| (r.name.clone(), r))
+            .collect::<HashMap<_, _>>();
+        let processes = data
+            .processes
+            .into_iter()
+            .map(|p| (p.name.clone(), p))
+            .collect::<HashMap<_, _>>();
+        let buildings = data
+            .buildings
+            .into_iter()
+            .map(|b| (b.name.clone(), b))
+            .collect::<HashMap<_, _>>();
+
         Ok(Game {
             inventory: HashMap::new(),
             buildings: HashMap::new(),
@@ -294,29 +315,38 @@ impl Game {
 
     #[wasm_bindgen(getter)]
     pub fn inventory(&self) -> Vec<InventoryEntry> {
-        self.inventory.iter().map(|(k, v)| InventoryEntry {
-            resource: k.clone(),
-            amount: *v,
-        }).collect()
+        self.inventory
+            .iter()
+            .map(|(k, v)| InventoryEntry {
+                resource: k.clone(),
+                amount: *v,
+            })
+            .collect()
     }
 
     #[wasm_bindgen(getter)]
     pub fn buildings(&self) -> Vec<BuildingGroupInstance> {
-        self.buildings.iter().map(|((bn, _), bgi)| BuildingGroupInstance {
-            building_name: bn.clone(),
-            process: bgi.process.clone(),
-            active_count: bgi.active_count,
-            pending_count: bgi.pending_count,
-            total_count: bgi.total_count,
-        }).collect()
+        self.buildings
+            .iter()
+            .map(|((bn, _), bgi)| BuildingGroupInstance {
+                building_name: bn.clone(),
+                process: bgi.process.clone(),
+                active_count: bgi.active_count,
+                pending_count: bgi.pending_count,
+                total_count: bgi.total_count,
+            })
+            .collect()
     }
 
     #[wasm_bindgen(getter)]
     pub fn tracker(&self) -> Vec<RateHistoryEntry> {
-        self.tracker.iter().map(|(k, v)| RateHistoryEntry {
-            resource: k.clone(),
-            rate: v.clone(),
-        }).collect()
+        self.tracker
+            .iter()
+            .map(|(k, v)| RateHistoryEntry {
+                resource: k.clone(),
+                rate: v.clone(),
+            })
+            .collect()
     }
 
     #[wasm_bindgen(getter)]
@@ -325,17 +355,39 @@ impl Game {
     }
 
     #[wasm_bindgen(js_name = "addBuilding")]
-    pub fn add_building(&mut self, building_name: &str, process_name: &str, count: i32) -> Result<(), JsValue> {
+    pub fn add_building(
+        &mut self,
+        building_name: &str,
+        process_name: &str,
+        count: i32,
+    ) -> Result<(), JsValue> {
         if !self.data.processes.contains_key(process_name) {
-            return Err(JsValue::from_str(&format!("Process '{}' does not exist", process_name)));
+            return Err(JsValue::from_str(&format!(
+                "Process '{}' does not exist",
+                process_name
+            )));
         }
 
         if !self.data.buildings.contains_key(building_name) {
-            return Err(JsValue::from_str(&format!("Building '{}' does not exist", building_name)));
+            return Err(JsValue::from_str(&format!(
+                "Building '{}' does not exist",
+                building_name
+            )));
         }
 
-        if self.data.buildings.get(building_name).unwrap().available_processes.iter().all(|p| p != process_name) {
-            return Err(JsValue::from_str(&format!("Process '{}' is not available for building '{}'", process_name, building_name)));
+        if self
+            .data
+            .buildings
+            .get(building_name)
+            .unwrap()
+            .available_processes
+            .iter()
+            .all(|p| p != process_name)
+        {
+            return Err(JsValue::from_str(&format!(
+                "Process '{}' is not available for building '{}'",
+                process_name, building_name
+            )));
         }
 
         if count == 0 {
@@ -348,23 +400,26 @@ impl Game {
             let process = self.data.processes.get(process_name).unwrap().clone();
             let delta = count as u32;
 
-            let building_group = self.buildings.entry(key.clone()).or_insert_with(|| BuildingGroupInstance {
-                building_name: building_name.to_string(),
-                process: ProcessInstance {
-                    process_name: process.name.clone(),
-                    power_consumption: process.power_consumption,
-                    power_generation: process.power_generation,
-                    inputs: process.inputs.clone(),
-                    outputs: process.outputs.clone(),
-                    duration: process.duration,
-                    remaining_seconds: process.duration,
-                    progress_percent: 0.0,
-                    efficiency_percent: 100.0,
-                },
-                total_count: 0,
-                active_count: 0,
-                pending_count: 0,
-            });
+            let building_group =
+                self.buildings
+                    .entry(key.clone())
+                    .or_insert_with(|| BuildingGroupInstance {
+                        building_name: building_name.to_string(),
+                        process: ProcessInstance {
+                            process_name: process.name.clone(),
+                            power_consumption: process.power_consumption,
+                            power_generation: process.power_generation,
+                            inputs: process.inputs.clone(),
+                            outputs: process.outputs.clone(),
+                            duration: process.duration,
+                            remaining_seconds: process.duration,
+                            progress_percent: 0.0,
+                            efficiency_percent: 100.0,
+                        },
+                        total_count: 0,
+                        active_count: 0,
+                        pending_count: 0,
+                    });
 
             building_group.total_count = building_group.total_count.saturating_add(delta);
 
@@ -388,7 +443,8 @@ impl Game {
             remaining_to_remove -= removed_from_active;
 
             let removed_total = removed_from_pending.saturating_add(removed_from_active);
-            let additional = remaining_to_remove.min(building_group.total_count.saturating_sub(removed_total));
+            let additional =
+                remaining_to_remove.min(building_group.total_count.saturating_sub(removed_total));
             building_group.total_count = building_group
                 .total_count
                 .saturating_sub(removed_total.saturating_add(additional));
@@ -429,8 +485,10 @@ impl Game {
         let mut total_power_consumption = 0.0;
 
         self.buildings.values().for_each(|building_group| {
-            total_power_generation += building_group.process.power_generation * building_group.active_count as f64;
-            total_power_consumption += building_group.process.power_consumption * building_group.active_count as f64;
+            total_power_generation +=
+                building_group.process.power_generation * building_group.active_count as f64;
+            total_power_consumption +=
+                building_group.process.power_consumption * building_group.active_count as f64;
         });
 
         // Calculate power scale factor
@@ -447,11 +505,12 @@ impl Game {
                 1.0
             };
 
-            building_group.process.efficiency_percent = if building_group.process.power_consumption > 0.0 {
-                consumer_power_scale * 100.0
-            } else {
-                100.0
-            };
+            building_group.process.efficiency_percent =
+                if building_group.process.power_consumption > 0.0 {
+                    consumer_power_scale * 100.0
+                } else {
+                    100.0
+                };
 
             let mut completed_cycle = false;
             if building_group.active_count > 0 {
@@ -490,37 +549,48 @@ impl Game {
             }
 
             if building_group.active_count == 0 || completed_cycle {
+                let is_unpowered_idle_consumer = building_group.active_count == 0
+                    && building_group.process.power_consumption > 0.0
+                    && total_power_generation <= 0.0;
+
                 let available_capacity = if building_group.active_count == 0 {
                     // When idle, all buildings (including pending) are eligible to start.
                     building_group.total_count
                 } else {
-                    building_group.total_count.saturating_sub(building_group.pending_count)
+                    building_group
+                        .total_count
+                        .saturating_sub(building_group.pending_count)
                 };
 
                 // Compute how many buildings can start based on available resources and capacity
                 let startable_processes: u32 = {
-                    let mut startable = available_capacity;
-                    for input in &building_group.process.inputs {
-                        let available_amount = *self.inventory.get(&input.resource).unwrap_or(&0.0);
-                        let max_by_resource = (available_amount / input.amount).floor();
+                    if is_unpowered_idle_consumer {
+                        0
+                    } else {
+                        let mut startable = available_capacity;
+                        for input in &building_group.process.inputs {
+                            let available_amount =
+                                *self.inventory.get(&input.resource).unwrap_or(&0.0);
+                            let max_by_resource = (available_amount / input.amount).floor();
 
-                        if max_by_resource <= 0.0 {
-                            startable = 0;
-                            break;
+                            if max_by_resource <= 0.0 {
+                                startable = 0;
+                                break;
+                            }
+
+                            let max_by_resource_u32 = if max_by_resource > u32::MAX as f64 {
+                                u32::MAX
+                            } else {
+                                max_by_resource as u32
+                            };
+
+                            startable = startable.min(max_by_resource_u32);
+                            if startable == 0 {
+                                break;
+                            }
                         }
-
-                        let max_by_resource_u32 = if max_by_resource > u32::MAX as f64 {
-                            u32::MAX
-                        } else {
-                            max_by_resource as u32
-                        };
-
-                        startable = startable.min(max_by_resource_u32);
-                        if startable == 0 {
-                            break;
-                        }
+                        startable
                     }
-                    startable
                 };
 
                 if startable_processes > 0 {
@@ -540,16 +610,25 @@ impl Game {
                     }
 
                     building_group.active_count = startable_processes;
+                    let moved_from_pending = building_group.pending_count.min(startable_processes);
+                    building_group.pending_count -= moved_from_pending;
                     building_group.process.remaining_seconds = building_group.process.duration;
                     inventory_changed = true;
                     simulation_changed = true;
                 } else {
                     building_group.active_count = 0;
-                    if !completed_cycle {
+                    if !completed_cycle && !is_unpowered_idle_consumer {
                         // Idle groups do not carry deferred-join state between ticks.
                         building_group.pending_count = 0;
                     }
                 }
+
+                debug_assert!(
+                    building_group
+                        .active_count
+                        .saturating_add(building_group.pending_count)
+                        <= building_group.total_count
+                );
             }
 
             building_group.process.progress_percent = if building_group.active_count == 0 {
@@ -576,7 +655,7 @@ impl Game {
     pub fn get_production_chart_series(&self) -> Vec<ProductionChartSeries> {
         let mut series = Vec::<ProductionChartSeries>::new();
 
-        for resource_name in  self.data.resources.keys() {
+        for resource_name in self.data.resources.keys() {
             let history = self
                 .tracker
                 .get(resource_name)
@@ -585,7 +664,7 @@ impl Game {
                     produced: vec![0.0; FLOW_HISTORY_LENGTH].into(),
                     consumed: vec![0.0; FLOW_HISTORY_LENGTH].into(),
                 });
-            
+
             let points = history
                 .produced
                 .iter()
@@ -619,10 +698,11 @@ impl Game {
     #[wasm_bindgen(js_name = "sampleResourceFlowHistory")]
     pub fn sample_resource_flow_history(&mut self) {
         let sample_flow = std::mem::take(&mut self.flow);
-        
+
         for resource_name in self.data.resources.keys() {
             let sampled = sample_flow.get(resource_name).cloned().unwrap_or_default();
-            let history = self.tracker
+            let history = self
+                .tracker
                 .entry(resource_name.clone())
                 .or_insert_with(|| RateHistory {
                     produced: vec![0.0; FLOW_HISTORY_LENGTH].into(),
