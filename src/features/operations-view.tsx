@@ -232,43 +232,75 @@ export const OperationsView = () => {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {generators.map(({ building_name, active_count, process, total_count }) => 
-                    <Item variant="outline" key={`${building_name}-${process.process_name}`}>
-                      <ItemContent>
-                        <ItemTitle className="flex flex-col items-start">
-                          <span>{building_name} &times; {total_count}</span>
-                          <span className="text-xs text-muted-foreground">{process.process_name}</span>
-                        </ItemTitle>
-                        <ProgressBar mode="continuous" value={100} active={active_count > 0} />
-                        <ItemDescription className="flex flex-col">
-                          {process.power_generation > 0 && (
+                  {generators.map(({ building_name, active_count, process, total_count }) => {
+                    const isResourceProducer = process.outputs.length > 0;
+                    const isResourceConsumer = process.inputs.length > 0;
+                    const isPowerGenerator = process.power_generation > 0;
+                    const isPowerConsumer = process.power_consumption > 0;
+                    return (
+                      <Item variant="outline" key={`${building_name}-${process.process_name}`}>
+                        <ItemContent>
+                          <ItemTitle className="flex flex-col items-start">
+                            <span>{building_name} &times; {total_count}</span>
+                            <span className="text-xs text-muted-foreground">{process.process_name}</span>
+                          </ItemTitle>
+                          <ProgressBar
+                            mode={(isResourceProducer || isResourceConsumer) ? "progress" : "continuous"}
+                            value={(isResourceProducer || isResourceConsumer) ? process.progress_percent : 100}
+                          />
+                          <ItemDescription className="flex flex-col">
+                            {isResourceConsumer && (
+                              <span className="flex items-center gap-1">
+                                <Consumed size={16} className="inline-block" />
+                                {process.inputs.map((input) => `-${input.amount * total_count} ${input.resource}`).join(", ")}
+                              </span>
+                            )}
+                            {isResourceProducer && (
+                              <span className="flex items-center gap-1">
+                                <Produced size={16} className="inline-block" />
+                                {process.outputs.map((output) => `+${output.amount * total_count} ${output.resource}`).join(", ")}
+                              </span>
+                            )}
+                            {(isResourceProducer || isResourceConsumer) && (
+                              <span className="flex items-center gap-1">
+                                <CycleTime size={16} className="inline-block" /> {process.duration}s
+                              </span>
+                            )}
+                            {isPowerGenerator && (
+                              <span className="flex items-center gap-1">
+                                <Power size={16} className="inline-block" />
+                                +{process.power_generation * total_count} MW
+                              </span>
+                            )}
+                            {isPowerConsumer && (
+                              <span className="flex items-center gap-1">
+                                <Power size={16} className="inline-block" />
+                                -{process.power_consumption * total_count} MW
+                              </span>
+                            )}
                             <span className="flex items-center gap-1">
-                              <Power size={16} className="inline-block" />
-                              +{process.power_generation * total_count} MW
+                              <Efficiency size={16} />
+                              {active_count > 0 ? "Online" : "Offline"} ({active_count}/{total_count} running)
                             </span>
-                          )}
-                          <span className="flex items-center gap-1">
-                            <Efficiency size={16} />
-                            {active_count > 0 ? "Online" : "Offline"} ({active_count}/{total_count} running)
-                          </span>
-                        </ItemDescription>
-                      </ItemContent>
-                      <ItemActions>
-                        <Button
-                          variant="outline"
-                          onClick={() => game.addBuilding(building_name, process.process_name, 1)}
-                        >
-                          <Plus />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          onClick={() => game.addBuilding(building_name, process.process_name, -1)}
-                        >
-                          <Minus />
-                        </Button>
-                      </ItemActions>
-                    </Item>
-                  )}
+                          </ItemDescription>
+                        </ItemContent>
+                        <ItemActions>
+                          <Button
+                            variant="outline"
+                            onClick={() => game.addBuilding(building_name, process.process_name, 1)}
+                          >
+                            <Plus />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => game.addBuilding(building_name, process.process_name, -1)}
+                          >
+                            <Minus />
+                          </Button>
+                        </ItemActions>
+                      </Item>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -343,6 +375,10 @@ export const OperationsView = () => {
               ) : (
                 <div className="space-y-2">
                   {producers.map(({building_name, active_count, process, total_count}) => {
+                    const isResourceProducer = process.outputs.length > 0;
+                    const isResourceConsumer = process.inputs.length > 0;
+                    const isPowerGenerator = process.power_generation > 0;
+                    const isPowerConsumer = process.power_consumption > 0;
                     return (
                       <Item variant="outline" key={`${building_name}-${process.process_name}`}>
                         <ItemContent>
@@ -350,46 +386,54 @@ export const OperationsView = () => {
                             <span>{building_name} &times; {total_count}</span>
                             <span className="text-xs text-muted-foreground">{process.process_name}</span>
                           </ItemTitle>
-                          <ProgressBar value={process.progress_percent} />
+                          <ProgressBar
+                            mode={(isResourceProducer || isResourceConsumer) ? "progress" : "continuous"}
+                            value={(isResourceProducer || isResourceConsumer) ? process.progress_percent : 100}
+                          />
                           <ItemDescription className="flex flex-col">
-                            {process.inputs.length > 0 && (
+                            {isResourceConsumer && (
                               <span className="flex items-center gap-1">
                                 <Consumed size={16} className="inline-block" />
                                 {process.inputs.map((input) => `-${input.amount * total_count} ${input.resource}`).join(", ")}
                               </span>
                             )}
-                            {process.outputs.length > 0 && (
-                              process.outputs.map((output) => (
-                                <span key={`${building_name}-${process.process_name}-${output.resource}`} className="flex items-center gap-1">
-                                  <Produced size={16} className="inline-block" /> +{output.amount * total_count} {output.resource}
-                                </span>
-                              ))
+                            {isResourceProducer && (
+                              <span className="flex items-center gap-1">
+                                <Produced size={16} className="inline-block" />
+                                {process.outputs.map((output) => `+${output.amount * total_count} ${output.resource}`).join(", ")}
+                              </span>
                             )}
-                            {process.duration > 0 && (
+                            {(isResourceProducer || isResourceConsumer) && (
                               <span className="flex items-center gap-1">
                                 <CycleTime size={16} className="inline-block" /> {process.duration}s
                               </span>
                             )}
-                            {process.power_consumption > 0 && (
+                            {isPowerGenerator && (
                               <span className="flex items-center gap-1">
-                                <Power size={16} className="inline-block" /> -{process.power_consumption * total_count} MW
+                                <Power size={16} className="inline-block" />
+                                +{process.power_generation * total_count} MW
+                              </span>
+                            )}
+                            {isPowerConsumer && (
+                              <span className="flex items-center gap-1">
+                                <Power size={16} className="inline-block" />
+                                -{process.power_consumption * total_count} MW
                               </span>
                             )}
                             <span className="flex items-center gap-1">
-                              <Efficiency size={16} /> {process.efficiency_percent}% efficiency ({active_count}/{total_count} running)
+                              <Efficiency size={16} />
+                              {active_count > 0 ? "Online" : "Offline"} ({active_count}/{total_count} running)
                             </span>
                           </ItemDescription>
                         </ItemContent>
                         <ItemActions>
                           <Button
-                            size="sm"
                             variant="outline"
                             onClick={() => game.addBuilding(building_name, process.process_name, 1)}
                           >
                             <Plus />
                           </Button>
                           <Button
-                            size="sm"
                             variant="destructive"
                             onClick={() => game.addBuilding(building_name, process.process_name, -1)}
                           >
@@ -436,7 +480,7 @@ export const OperationsView = () => {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {inventory.map(({ resource, amount}) => (
+                  {inventory.map(({ resource, amount }) =>
                     <Item variant="outline" key={resource}>
                       <ItemContent>
                         <ItemTitle>{resource}</ItemTitle>
@@ -445,7 +489,7 @@ export const OperationsView = () => {
                         <span>{amount}</span>
                       </ItemActions>
                     </Item>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
