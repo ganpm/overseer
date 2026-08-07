@@ -45,7 +45,12 @@ import {
   PackageMinus as Consumed,
   PackagePlus as Produced,
   Timer as CycleTime,
-  TrendingUp as Efficiency,
+  Activity,
+  Gauge as Efficiency,
+  ShieldCheck as Active,
+  ShieldMinus as Idle,
+  ShieldQuestionMark as Pending,
+  TriangleAlert as Warning,
   Search,
   Hammer as Build,
 } from "lucide-react";
@@ -232,11 +237,14 @@ export const OperationsView = () => {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {generators.map(({ building_name, active_count, process, total_count }) => {
+                  {generators.map(({ building_name, process, total_count, active_count, pending_count }) => {
                     const isResourceProducer = process.outputs.length > 0;
                     const isResourceConsumer = process.inputs.length > 0;
                     const isPowerGenerator = process.power_generation > 0;
                     const isPowerConsumer = process.power_consumption > 0;
+                    const idle_count = total_count - active_count - pending_count;
+                    const utilization = total_count > 0 ? (active_count / total_count) * 100 : 0;
+                    const efficiency = process.efficiency_percent;
                     return (
                       <Item variant="outline" key={`${building_name}-${process.process_name}`}>
                         <ItemContent>
@@ -280,7 +288,22 @@ export const OperationsView = () => {
                             )}
                             <span className="flex items-center gap-1">
                               <Efficiency size={16} />
-                              {active_count > 0 ? "Online" : "Offline"} ({active_count}/{total_count} running)
+                              {efficiency.toFixed(0)}% Efficiency
+                              {efficiency < 100 && (
+                                <Warning size={16} className="text-warning" />
+                              )}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Active size={16} />{active_count} Active
+                              <Idle size={16} />{idle_count} Idle
+                              <Pending size={16} />{pending_count} Pending
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Activity size={16} />
+                              {utilization.toFixed(0)}% Utilization
+                              {utilization < 100 && (
+                                <Warning size={16} className="text-warning" />
+                              )}
                             </span>
                           </ItemDescription>
                         </ItemContent>
@@ -374,11 +397,14 @@ export const OperationsView = () => {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {producers.map(({building_name, active_count, process, total_count}) => {
+                  {producers.map(({ building_name, process, total_count, active_count, pending_count }) => {
                     const isResourceProducer = process.outputs.length > 0;
                     const isResourceConsumer = process.inputs.length > 0;
                     const isPowerGenerator = process.power_generation > 0;
                     const isPowerConsumer = process.power_consumption > 0;
+                    const idle_count = total_count - active_count - pending_count;
+                    const utilization = total_count > 0 ? (active_count / total_count) * 100 : 0;
+                    const efficiency = process.efficiency_percent;
                     return (
                       <Item variant="outline" key={`${building_name}-${process.process_name}`}>
                         <ItemContent>
@@ -422,7 +448,22 @@ export const OperationsView = () => {
                             )}
                             <span className="flex items-center gap-1">
                               <Efficiency size={16} />
-                              {active_count > 0 ? "Online" : "Offline"} ({active_count}/{total_count} running)
+                              {efficiency.toFixed(0)}% Efficiency
+                              {efficiency < 100 && (
+                                <Warning size={16} />
+                              )}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Active size={16} />{active_count} Active
+                              <Idle size={16} />{idle_count} Idle
+                              <Pending size={16} />{pending_count} Pending
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Activity size={16} />
+                              {utilization.toFixed(0)}% Utilization
+                              {utilization < 100 && (
+                                <Warning size={16} />
+                              )}
                             </span>
                           </ItemDescription>
                         </ItemContent>
