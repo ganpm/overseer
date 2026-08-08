@@ -292,15 +292,14 @@ export const OperationsView = () => {
                               )}
                             </span>
                             <span className="flex items-center gap-1">
-                              <Active size={16} />{active_count} Active
-                              <Idle size={16} />{idle_count} Idle
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Activity size={16} />
-                              {utilization.toFixed(0)}% Utilization
+                              <Activity size={16} />{utilization.toFixed(0)}% Utilization
                               {utilization < 100 && (
                                 <Warning size={16} className="text-warning" />
                               )}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Active size={16} /> {active_count}/{total_count} Active
+                              <Idle size={16} /> {idle_count}/{total_count} Idle
                             </span>
                           </ItemDescription>
                         </ItemContent>
@@ -450,15 +449,14 @@ export const OperationsView = () => {
                               )}
                             </span>
                             <span className="flex items-center gap-1">
-                              <Active size={16} />{active_count} Active
-                              <Idle size={16} />{idle_count} Idle
+                              <Activity size={16} />{utilization.toFixed(0)}% Utilization
+                              {utilization < 100 && (
+                                <Warning size={16} className="text-warning" />
+                              )}
                             </span>
                             <span className="flex items-center gap-1">
-                              <Activity size={16} />
-                              {utilization.toFixed(0)}% Utilization
-                              {utilization < 100 && (
-                                <Warning size={16} />
-                              )}
+                              <Active size={16} /> {active_count}/{total_count} Active
+                              <Idle size={16} /> {idle_count}/{total_count} Idle
                             </span>
                           </ItemDescription>
                         </ItemContent>
