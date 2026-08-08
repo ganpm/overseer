@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque, hash_map::Entry};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
@@ -68,11 +68,7 @@ pub struct BuildingGroupInstance {
     /// The number of buildings running the process.
     /// Some buildings will not be active if there are not enough resources to run the process.
     active_count: u32,
-    /// The number of buildings that are pending construction.
-    /// A building added to a building group is considered pending
-    /// until the process in the building group is completed,
-    /// at which point the building becomes active and joins the active_count of the building group.
-    pending_count: u32,
+    idle_count: u32,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone, Default)]
@@ -95,27 +91,6 @@ pub struct JSONGameData {
     resources: Vec<Resource>,
     processes: Vec<Process>,
     buildings: Vec<Building>,
-}
-
-/// Represents the state of the game, including the player's inventory, constructed buildings, and available processes.
-#[wasm_bindgen]
-pub struct Game {
-    /// The current inventory.
-    /// Uses the resource name to keep track of the quantity of that resource in the inventory.
-    /// Represented as a HashMap for efficient lookups and updates of item quantities.
-    inventory: HashMap<String, f64>,
-
-    /// The currently constructed buildings and the processes they are currently running.
-    buildings: HashMap<(String, String), BuildingGroupInstance>,
-
-    /// Accumulator for tracking the flow of resources produced and consumed during a single tick of the game.
-    flow: HashMap<String, Rate>,
-
-    /// Tracker for the flow of resources over time, allowing for historical analysis of resource production and consumption.
-    tracker: HashMap<String, RateHistory>,
-
-    /// Lookup table for all the data loaded into the game.
-    data: GameData,
 }
 
 fn validate_data(data: &JSONGameData) -> Result<(), String> {
@@ -246,6 +221,7 @@ pub struct GameData {
     buildings: HashMap<String, Building>,
 }
 
+
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
 pub struct ProductionChartPoint {
@@ -276,6 +252,49 @@ pub struct RateHistoryEntry {
     resource: String,
     rate: RateHistory,
 }
+
+/// Represents the state of the game, including the player's inventory, constructed buildings, and available processes.
+#[wasm_bindgen]
+pub struct Game {
+    /// The current inventory.
+    /// Uses the resource name to keep track of the quantity of that resource in the inventory.
+    /// Represented as a HashMap for efficient lookups and updates of item quantities.
+    inventory: HashMap<String, f64>,
+
+    /// The currently constructed buildings and the processes they are currently running.
+    buildings: HashMap<(String, String), BuildingGroupInstance>,
+
+    /// Accumulator for tracking the flow of resources produced and consumed during a single tick of the game.
+    flow: HashMap<String, Rate>,
+
+    /// Tracker for the flow of resources over time, allowing for historical analysis of resource production and consumption.
+    tracker: HashMap<String, RateHistory>,
+
+    /// Lookup table for all the data loaded into the game.
+    data: GameData,
+}
+
+impl Game {
+    fn max_affordable(
+        inventory: &HashMap<String, f64>,
+        cost: &[ResourceAmount],
+        requested: u32,
+    ) -> u32 {
+        if requested == 0 || cost.is_empty() {
+            return requested;
+        }
+
+        cost.iter().fold(requested, |max_count, item| {
+            if item.amount <= 0.0 {
+                return max_count;
+            }
+            let available = inventory.get(&item.resource).copied().unwrap_or(0.0);
+            let affordable = (available / item.amount).floor().max(0.0) as u32;
+            max_count.min(affordable)
+        })
+    }
+}
+
 
 #[wasm_bindgen]
 impl Game {
@@ -332,7 +351,7 @@ impl Game {
                 building_name: bn.clone(),
                 process: bgi.process.clone(),
                 active_count: bgi.active_count,
-                pending_count: bgi.pending_count,
+                idle_count: bgi.idle_count,
                 total_count: bgi.total_count,
             })
             .collect()
@@ -361,28 +380,18 @@ impl Game {
         process_name: &str,
         count: i32,
     ) -> Result<(), JsValue> {
-        if !self.data.processes.contains_key(process_name) {
-            return Err(JsValue::from_str(&format!(
-                "Process '{}' does not exist",
-                process_name
-            )));
+        if count == 0 {
+            return Ok(());
         }
 
-        if !self.data.buildings.contains_key(building_name) {
+        let Some(building) = self.data.buildings.get(building_name) else {
             return Err(JsValue::from_str(&format!(
                 "Building '{}' does not exist",
                 building_name
             )));
-        }
+        };
 
-        if self
-            .data
-            .buildings
-            .get(building_name)
-            .unwrap()
-            .available_processes
-            .iter()
-            .all(|p| p != process_name)
+        if !building.available_processes.iter().any(|p| p == process_name)
         {
             return Err(JsValue::from_str(&format!(
                 "Process '{}' is not available for building '{}'",
@@ -390,23 +399,48 @@ impl Game {
             )));
         }
 
-        if count == 0 {
-            return Ok(());
-        }
-
         let key = (building_name.to_string(), process_name.to_string());
 
         if count > 0 {
-            let process = self.data.processes.get(process_name).unwrap().clone();
-            let delta = count as u32;
+            let requested = count as u32;
 
-            let building_group =
-                self.buildings
-                    .entry(key.clone())
-                    .or_insert_with(|| BuildingGroupInstance {
+            let buildable = requested;
+            // let buildable = Self::max_affordable(&self.inventory, &building.cost, requested);
+            // if buildable == 0 {
+            //     // TODO: Consider returning an error or warning if the player cannot afford any buildings.
+            //     return Ok(()); 
+            // }
+
+            match self.buildings.entry(key) {
+                Entry::Occupied(mut entry) => {
+                    // Group already exists, pay for new buildings,
+                    // and add them in as idle, leaving the running cycle unaffected.
+                    // for cost in &building.cost {
+                    //     *self.inventory.entry(cost.resource.clone()).or_insert(0.0) -=
+                    //         cost.amount * buildable as f64;
+                    // }
+
+                    let group = entry.get_mut();
+                    group.total_count = group.total_count.saturating_add(buildable);
+                    group.idle_count = group.idle_count.saturating_add(buildable);
+                },
+                Entry::Vacant(entry) => {
+                    let Some(process) = self.data.processes.get(process_name) else {
+                        return Err(JsValue::from_str(&format!(
+                            "Process '{}' does not exist",
+                            process_name
+                        )));
+                    };
+
+                    //for cost in &building.cost {
+                    //    *self.inventory.entry(cost.resource.clone()).or_insert(0.0) -=
+                    //        cost.amount * buildable as f64;
+                    //}
+
+                    entry.insert(BuildingGroupInstance {
                         building_name: building_name.to_string(),
                         process: ProcessInstance {
-                            process_name: process.name.clone(),
+                            process_name: process_name.to_string(),
                             power_consumption: process.power_consumption,
                             power_generation: process.power_generation,
                             inputs: process.inputs.clone(),
@@ -416,52 +450,30 @@ impl Game {
                             progress_percent: 0.0,
                             efficiency_percent: 100.0,
                         },
-                        total_count: 0,
+                        total_count: buildable,
                         active_count: 0,
-                        pending_count: 0,
+                        idle_count: buildable,
                     });
-
-            building_group.total_count = building_group.total_count.saturating_add(delta);
-
-            if building_group.active_count > 0 {
-                // If this group is currently mid-cycle, new buildings join after completion.
-                building_group.pending_count = building_group.pending_count.saturating_add(delta);
-            } else {
-                // If this group is idle, buildings must still wait for the next start check,
-                // which consumes inputs before any power generation is counted.
-                building_group.pending_count = building_group.pending_count.saturating_add(delta);
+                }
             }
-        } else if let Some(building_group) = self.buildings.get_mut(&key) {
-            let mut remaining_to_remove = count.unsigned_abs();
+        } else {
+            let to_remove = (-count) as u32;
 
-            let removed_from_pending = building_group.pending_count.min(remaining_to_remove);
-            building_group.pending_count -= removed_from_pending;
-            remaining_to_remove -= removed_from_pending;
+            if let Entry::Occupied(mut entry) = self.buildings.entry(key) {
+                let group = entry.get_mut();
+                let removed = to_remove.min(group.total_count);
 
-            let removed_from_active = building_group.active_count.min(remaining_to_remove);
-            building_group.active_count -= removed_from_active;
-            remaining_to_remove -= removed_from_active;
+                let from_idle = removed.min(group.idle_count);
+                group.idle_count = group.idle_count.saturating_sub(from_idle);
 
-            let removed_total = removed_from_pending.saturating_add(removed_from_active);
-            let additional =
-                remaining_to_remove.min(building_group.total_count.saturating_sub(removed_total));
-            building_group.total_count = building_group
-                .total_count
-                .saturating_sub(removed_total.saturating_add(additional));
+                let from_active = removed.saturating_sub(from_idle);
+                group.active_count = group.active_count.saturating_sub(from_active);
+                group.total_count = group.total_count.saturating_sub(removed);
 
-            if building_group.total_count == 0 {
-                building_group.process.remaining_seconds = building_group.process.duration;
-                building_group.process.progress_percent = 0.0;
+                if group.total_count == 0 {
+                    entry.remove();
+                }
             }
-        }
-
-        if self
-            .buildings
-            .get(&key)
-            .map(|group| group.total_count == 0)
-            .unwrap_or(false)
-        {
-            self.buildings.remove(&key);
         }
 
         Ok(())
@@ -477,178 +489,39 @@ impl Game {
             return Ok(false);
         }
 
-        let mut inventory_changed = false;
-        let mut simulation_changed = false;
+        let mut total_power_consumption = 0.0_f64;
+        let mut total_power_generation = 0.0_f64;
 
-        // Compute total power consumption and generation
-        let mut total_power_generation = 0.0;
-        let mut total_power_consumption = 0.0;
-
-        self.buildings.values().for_each(|building_group| {
-            total_power_generation +=
-                building_group.process.power_generation * building_group.active_count as f64;
-            total_power_consumption +=
-                building_group.process.power_consumption * building_group.active_count as f64;
+        self.buildings.values().for_each(|group| {
+            total_power_consumption += group.process.power_consumption * group.active_count as f64;
+            total_power_generation += group.process.power_generation * group.active_count as f64;
         });
 
-        // Calculate power scale factor
-        let consumer_power_scale = if total_power_consumption <= 0.0 {
-            1.0
-        } else {
+        let has_power = total_power_generation > 0.0;
+
+        let consumer_power_scale = if total_power_consumption > 0.0 {
             (total_power_generation / total_power_consumption).clamp(0.0, 1.0)
+        } else {
+            1.0
         };
 
-        for building_group in self.buildings.values_mut() {
-            let process_scale = if building_group.process.power_consumption > 0.0 {
+        let Game { inventory, buildings, ..} = self;
+
+        let mut changed = false;
+
+        // Note: |= on purpose, not || because || short-circuits and we want to tick all groups even if one returns true.
+        for group in buildings.values_mut() {
+            changed |= Self::tick_group(
+                group,
+                inventory,
+                &mut self.flow,
+                delta_seconds,
+                has_power,
                 consumer_power_scale
-            } else {
-                1.0
-            };
-
-            building_group.process.efficiency_percent =
-                if building_group.process.power_consumption > 0.0 {
-                    consumer_power_scale * 100.0
-                } else {
-                    100.0
-                };
-
-            let mut completed_cycle = false;
-            if building_group.active_count > 0 {
-                building_group.process.remaining_seconds -= delta_seconds * process_scale;
-                simulation_changed = true;
-
-                if building_group.process.remaining_seconds <= 0.0 {
-                    completed_cycle = true;
-                }
-            }
-
-            if completed_cycle {
-                // Produce outputs
-                for output in &building_group.process.outputs {
-                    let produced_amount = output.amount * building_group.active_count as f64;
-                    let entry = self.inventory.entry(output.resource.clone()).or_insert(0.0);
-                    *entry += produced_amount;
-                    self.flow
-                        .entry(output.resource.clone())
-                        .or_default()
-                        .produced += produced_amount;
-                }
-
-                inventory_changed = true;
-
-                // If there are pending buildings, they become active after the cycle completes.
-                if building_group.pending_count > 0 {
-                    building_group.active_count = building_group
-                        .active_count
-                        .saturating_add(building_group.pending_count);
-                    building_group.pending_count = 0;
-                }
-
-                // Reset the process for the next cycle
-                building_group.process.remaining_seconds = building_group.process.duration;
-            }
-
-            if building_group.active_count == 0 || completed_cycle {
-                let is_unpowered_idle_consumer = building_group.active_count == 0
-                    && building_group.process.power_consumption > 0.0
-                    && total_power_generation <= 0.0;
-
-                let available_capacity = if building_group.active_count == 0 {
-                    // When idle, all buildings (including pending) are eligible to start.
-                    building_group.total_count
-                } else {
-                    building_group
-                        .total_count
-                        .saturating_sub(building_group.pending_count)
-                };
-
-                // Compute how many buildings can start based on available resources and capacity
-                let startable_processes: u32 = {
-                    if is_unpowered_idle_consumer {
-                        0
-                    } else {
-                        let mut startable = available_capacity;
-                        for input in &building_group.process.inputs {
-                            let available_amount =
-                                *self.inventory.get(&input.resource).unwrap_or(&0.0);
-                            let max_by_resource = (available_amount / input.amount).floor();
-
-                            if max_by_resource <= 0.0 {
-                                startable = 0;
-                                break;
-                            }
-
-                            let max_by_resource_u32 = if max_by_resource > u32::MAX as f64 {
-                                u32::MAX
-                            } else {
-                                max_by_resource as u32
-                            };
-
-                            startable = startable.min(max_by_resource_u32);
-                            if startable == 0 {
-                                break;
-                            }
-                        }
-                        startable
-                    }
-                };
-
-                if startable_processes > 0 {
-                    // Consume inputs
-                    for input in &building_group.process.inputs {
-                        let consumed = input.amount * startable_processes as f64;
-                        let entry = self.inventory.entry(input.resource.clone()).or_insert(0.0);
-                        *entry -= consumed;
-                        self.flow
-                            .entry(input.resource.clone())
-                            .or_default()
-                            .consumed -= consumed;
-
-                        if *entry < 1e-9 {
-                            *entry = 0.0;
-                        }
-                    }
-
-                    building_group.active_count = startable_processes;
-                    let moved_from_pending = building_group.pending_count.min(startable_processes);
-                    building_group.pending_count -= moved_from_pending;
-                    building_group.process.remaining_seconds = building_group.process.duration;
-                    inventory_changed = true;
-                    simulation_changed = true;
-                } else {
-                    building_group.active_count = 0;
-                    if !completed_cycle && !is_unpowered_idle_consumer {
-                        // Idle groups do not carry deferred-join state between ticks.
-                        building_group.pending_count = 0;
-                    }
-                }
-
-                debug_assert!(
-                    building_group
-                        .active_count
-                        .saturating_add(building_group.pending_count)
-                        <= building_group.total_count
-                );
-            }
-
-            building_group.process.progress_percent = if building_group.active_count == 0 {
-                0.0
-            } else {
-                let clamped_remaining = building_group
-                    .process
-                    .remaining_seconds
-                    .clamp(0.0, building_group.process.duration);
-                let progressed = (building_group.process.duration - clamped_remaining)
-                    .clamp(0.0, building_group.process.duration);
-                if building_group.process.duration <= 0.0 {
-                    0.0
-                } else {
-                    (progressed / building_group.process.duration * 100.0).clamp(0.0, 100.0)
-                }
-            };
+            );
         }
 
-        Ok(inventory_changed || simulation_changed)
+        Ok(changed)
     }
 
     #[wasm_bindgen(js_name = "getProductionChartSeries")]
@@ -713,6 +586,114 @@ impl Game {
             history.consumed.pop_front();
             history.consumed.push_back(sampled.consumed);
             self.flow.insert(resource_name.clone(), Rate::default()); // Reset flow for the next tick
+        }
+    }
+}
+
+
+impl Game {
+    fn tick_group(
+        group: &mut BuildingGroupInstance,
+        inventory: &mut HashMap<String, f64>,
+        flow: &mut HashMap<String, Rate>,
+        delta_seconds: f64,
+        has_power: bool,
+        consumer_power_scale: f64,
+    ) -> bool {
+        let needs_power = group.process.power_consumption > 0.0;
+        let is_powered = !needs_power || has_power;
+
+        // Anything mid-cycle stops and loses progress, dropping back to idle.
+        // Buildings that need power cannot do anything else this tick.
+        if needs_power && !is_powered {
+            if group.active_count > 0 {
+                group.idle_count = group.idle_count.saturating_add(group.active_count);
+                group.active_count = 0;
+                group.process.remaining_seconds = group.process.duration;
+                group.process.progress_percent = 0.0;
+                return true;
+            }
+            return false;
+        }
+
+        // Brownouts (has power but scarce) slows consumers down instead of stopping them
+        // Non-consumers are unaffected
+        let speed_scale = if needs_power && is_powered {
+            consumer_power_scale
+        } else {
+            1.0
+        };
+
+        if group.active_count > 0 {
+            let time_left = delta_seconds * speed_scale;
+
+            if group.process.remaining_seconds > time_left {
+                group.process.remaining_seconds -= time_left;
+                group.process.progress_percent =
+                    100.0 * (group.process.duration - group.process.remaining_seconds) / group.process.duration;
+                return true;
+            }
+
+            // Cycle complete: produce outputs for building was
+            // actively working this cycle.
+            for output in &group.process.outputs {
+                *inventory.entry(output.resource.clone()).or_insert(0.0) +=
+                    output.amount * group.active_count as f64;
+                flow
+                    .entry(output.resource.clone())
+                    .or_insert_with(Rate::default)
+                    .produced += output.amount * group.active_count as f64;
+            }
+
+            // Buiildings that just finished and and those in idle count (new arrivals or previously resource-starved)
+            // now compete together for the next cycle.
+            let candidates = group.active_count + group.idle_count;
+            let starting = if is_powered {
+                Self::max_affordable(inventory, &group.process.inputs, candidates)
+            } else {
+                0
+            };
+
+            if starting > 0 {
+                // Consume inputs for the buildings that will start the next cycle.
+                for input in &group.process.inputs {
+                    *inventory.entry(input.resource.clone()).or_insert(0.0) -=
+                        input.amount * starting as f64;
+                    flow
+                        .entry(input.resource.clone())
+                        .or_insert_with(Rate::default)
+                        .consumed -= input.amount * starting as f64;
+                }
+            }
+            group.active_count = starting;
+            group.idle_count = candidates.saturating_sub(starting);
+            group.process.remaining_seconds = group.process.duration;
+            group.process.progress_percent = 0.0;
+            return true;
+        } else if group.idle_count > 0 && is_powered {
+            // Nothing running - idle buildings try to start a new cycle as soon as resources and power allow
+            let starting = Self::max_affordable(inventory, &group.process.inputs, group.idle_count);
+            if starting > 0 {
+                // Consume inputs for the buildings that will start the next cycle.
+                for input in &group.process.inputs {
+                    *inventory.entry(input.resource.clone()).or_insert(0.0) -=
+                        input.amount * starting as f64;
+                    flow
+                        .entry(input.resource.clone())
+                        .or_insert_with(Rate::default)
+                        .consumed -= input.amount * starting as f64;
+                }
+
+                group.active_count = starting;
+                group.idle_count = group.idle_count.saturating_sub(starting);
+                group.process.remaining_seconds = group.process.duration;
+                group.process.progress_percent = 0.0;
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
         }
     }
 }
