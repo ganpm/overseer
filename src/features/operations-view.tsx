@@ -49,7 +49,6 @@ import {
   Gauge as Efficiency,
   ShieldCheck as Active,
   ShieldMinus as Idle,
-  ShieldQuestionMark as Pending,
   TriangleAlert as Warning,
   Search,
   Hammer as Build,
@@ -237,12 +236,11 @@ export const OperationsView = () => {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {generators.map(({ building_name, process, total_count, active_count, pending_count }) => {
+                  {generators.map(({ building_name, process, total_count, active_count, idle_count }) => {
                     const isResourceProducer = process.outputs.length > 0;
                     const isResourceConsumer = process.inputs.length > 0;
                     const isPowerGenerator = process.power_generation > 0;
                     const isPowerConsumer = process.power_consumption > 0;
-                    const idle_count = total_count - active_count - pending_count;
                     const utilization = total_count > 0 ? (active_count / total_count) * 100 : 0;
                     const efficiency = process.efficiency_percent;
                     return (
@@ -296,7 +294,6 @@ export const OperationsView = () => {
                             <span className="flex items-center gap-1">
                               <Active size={16} />{active_count} Active
                               <Idle size={16} />{idle_count} Idle
-                              <Pending size={16} />{pending_count} Pending
                             </span>
                             <span className="flex items-center gap-1">
                               <Activity size={16} />
@@ -397,12 +394,11 @@ export const OperationsView = () => {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {producers.map(({ building_name, process, total_count, active_count, pending_count }) => {
+                  {producers.map(({ building_name, process, total_count, active_count, idle_count }) => {
                     const isResourceProducer = process.outputs.length > 0;
                     const isResourceConsumer = process.inputs.length > 0;
                     const isPowerGenerator = process.power_generation > 0;
                     const isPowerConsumer = process.power_consumption > 0;
-                    const idle_count = total_count - active_count - pending_count;
                     const utilization = total_count > 0 ? (active_count / total_count) * 100 : 0;
                     const efficiency = process.efficiency_percent;
                     return (
@@ -456,7 +452,6 @@ export const OperationsView = () => {
                             <span className="flex items-center gap-1">
                               <Active size={16} />{active_count} Active
                               <Idle size={16} />{idle_count} Idle
-                              <Pending size={16} />{pending_count} Pending
                             </span>
                             <span className="flex items-center gap-1">
                               <Activity size={16} />
