@@ -626,6 +626,8 @@ impl Game {
             1.0
         };
 
+        group.process.efficiency_percent = speed_scale * 100.0;
+
         if group.active_count > 0 {
             let time_left = delta_seconds * speed_scale;
 
