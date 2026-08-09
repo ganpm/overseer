@@ -24,7 +24,9 @@ import {
   TrendingUp,
   TrendingDown,
   MoveRight as TrendingNeutral,
-  ChartNoAxesCombined as RateIcon,
+  Clock as RateIcon,
+  ClockArrowUp as RateUpIcon,
+  ClockArrowDown as RateDownIcon,
   Search,
 } from "lucide-react";
 import {
@@ -141,9 +143,10 @@ export function ProductionView() {
             const resourceName = series.resource_name;
 
             const currentAmountString = toLocaleString(series.current_amount);
-            const averageRateValue = series.average_rate;
-            const averageRateString = toLocaleString(averageRateValue);
-            const trendIcon = averageRateValue > 0 ? <TrendingUp /> : averageRateValue < 0 ? <TrendingDown /> : <TrendingNeutral />;
+            const averageRateString = toLocaleString(series.average_rate);
+            const averageProductionString = toLocaleString(series.average_production);
+            const averageConsumptionString = toLocaleString(series.average_consumption);
+            const trendIcon = series.average_rate > 0 ? <TrendingUp /> : series.average_rate < 0 ? <TrendingDown /> : <TrendingNeutral />;
 
             return (
               <Card key={resourceName}>
@@ -153,13 +156,21 @@ export function ProductionView() {
                   </CardTitle>
                   <CardDescription>
                     <div className="flex gap-2">
-                      <span className="flex items-center gap-1">
+                      <span className="flex flex-1 justify-start items-center gap-1">
                         <Package size={14} />
                         {currentAmountString}
                       </span>
-                      <span className="flex items-center gap-1">
+                      <span className="flex flex-1 justify-start items-center gap-1">
                         <RateIcon size={14} />
                         {averageRateString}/s
+                      </span>
+                      <span className="flex flex-1 justify-start items-center gap-1">
+                        <RateUpIcon size={14} />
+                        {averageProductionString}/s
+                      </span>
+                      <span className="flex flex-1 justify-start items-center gap-1">
+                        <RateDownIcon size={14} />
+                        {averageConsumptionString}/s
                       </span>
                     </div>
                   </CardDescription>
