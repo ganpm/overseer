@@ -235,6 +235,8 @@ pub struct ProductionChartPoint {
 pub struct ProductionChartSeries {
     resource_name: String,
     current_amount: f64,
+    average_production: f64,
+    average_consumption: f64,
     average_rate: f64,
     points: Vec<ProductionChartPoint>,
 }
@@ -551,15 +553,15 @@ impl Game {
                 .collect::<Vec<_>>();
 
             let current_amount = *self.inventory.get(resource_name).unwrap_or(&0.0);
-            let average_rate = {
-                let total_produced: f64 = history.produced.iter().sum();
-                let total_consumed: f64 = history.consumed.iter().sum();
-                (total_produced + total_consumed) / FLOW_HISTORY_LENGTH as f64
-            };
+            let average_production = history.produced.iter().sum::<f64>() / FLOW_HISTORY_LENGTH as f64;
+            let average_consumption = history.consumed.iter().sum::<f64>() / FLOW_HISTORY_LENGTH as f64;
+            let average_rate = average_production + average_consumption;
 
             series.push(ProductionChartSeries {
                 resource_name: resource_name.clone(),
                 current_amount: current_amount,
+                average_production,
+                average_consumption,
                 average_rate,
                 points,
             });
