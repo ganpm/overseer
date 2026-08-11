@@ -3,8 +3,6 @@ use std::collections::{HashMap, HashSet, VecDeque, hash_map::Entry};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
-const FLOW_HISTORY_LENGTH: usize = 60;
-
 /// Represents a resource in the game.
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
@@ -266,6 +264,10 @@ pub struct Game {
     /// The currently constructed buildings and the processes they are currently running.
     buildings: HashMap<(String, String), BuildingGroupInstance>,
 
+    sample_interval: f64,
+    sample_length: usize,
+    elapsed_seconds: f64,
+
     /// Accumulator for tracking the flow of resources produced and consumed during a single tick of the game.
     flow: HashMap<String, Rate>,
 
@@ -301,7 +303,7 @@ impl Game {
 #[wasm_bindgen]
 impl Game {
     #[wasm_bindgen(constructor)]
-    pub fn new(data: JSONGameData) -> Result<Game, JsValue> {
+    pub fn new(data: JSONGameData, sample_interval: f64, sample_length: usize) -> Result<Game, JsValue> {
         validate_data(&data)
             .map_err(|err| JsValue::from_str(&format!("Game data validation failed: {err}")))?;
 
@@ -324,6 +326,9 @@ impl Game {
         Ok(Game {
             inventory: HashMap::new(),
             buildings: HashMap::new(),
+            sample_interval,
+            sample_length,
+            elapsed_seconds: 0.0,
             flow: HashMap::new(),
             tracker: HashMap::new(),
             data: GameData {
@@ -491,6 +496,8 @@ impl Game {
             return Ok(false);
         }
 
+        self.elapsed_seconds += delta_seconds;
+
         let mut total_power_consumption = 0.0_f64;
         let mut total_power_generation = 0.0_f64;
 
@@ -523,6 +530,12 @@ impl Game {
             );
         }
 
+        // Sample the resource flow history if enough time has elapsed since the last sample.
+        if self.elapsed_seconds >= self.sample_interval {
+            self.sample_resource_flow_history();
+            self.elapsed_seconds -= self.sample_interval;
+        }
+
         Ok(changed)
     }
 
@@ -536,8 +549,8 @@ impl Game {
                 .get(resource_name)
                 .cloned()
                 .unwrap_or_else(|| RateHistory {
-                    produced: vec![0.0; FLOW_HISTORY_LENGTH].into(),
-                    consumed: vec![0.0; FLOW_HISTORY_LENGTH].into(),
+                    produced: vec![0.0; self.sample_length].into(),
+                    consumed: vec![0.0; self.sample_length].into(),
                 });
 
             let points = history
@@ -546,15 +559,15 @@ impl Game {
                 .zip(history.consumed.iter())
                 .enumerate()
                 .map(|(index, (produced, consumed))| ProductionChartPoint {
-                    label: format!("-{}s", FLOW_HISTORY_LENGTH - 1 - index),
+                    label: format!("-{}s", self.sample_length - 1 - index),
                     produced: *produced,
                     consumed: *consumed,
                 })
                 .collect::<Vec<_>>();
 
             let current_amount = *self.inventory.get(resource_name).unwrap_or(&0.0);
-            let average_production = history.produced.iter().sum::<f64>() / FLOW_HISTORY_LENGTH as f64;
-            let average_consumption = history.consumed.iter().sum::<f64>() / FLOW_HISTORY_LENGTH as f64;
+            let average_production = history.produced.iter().sum::<f64>() / self.sample_length as f64;
+            let average_consumption = history.consumed.iter().sum::<f64>() / self.sample_length as f64;
             let average_rate = average_production + average_consumption;
 
             series.push(ProductionChartSeries {
@@ -580,8 +593,8 @@ impl Game {
                 .tracker
                 .entry(resource_name.clone())
                 .or_insert_with(|| RateHistory {
-                    produced: vec![0.0; FLOW_HISTORY_LENGTH].into(),
-                    consumed: vec![0.0; FLOW_HISTORY_LENGTH].into(),
+                    produced: vec![0.0; self.sample_length].into(),
+                    consumed: vec![0.0; self.sample_length].into(),
                 });
             history.produced.pop_front();
             history.produced.push_back(sampled.produced);
@@ -594,6 +607,38 @@ impl Game {
 
 
 impl Game {
+    fn consume_inputs(
+        inventory: &mut HashMap<String, f64>,
+        flow: &mut HashMap<String, Rate>,
+        inputs: &[ResourceAmount],
+        count: u32,
+    ) {
+        for input in inputs {
+            let consumed_amount = input.amount * count as f64;
+            *inventory.entry(input.resource.clone()).or_insert(0.0) -= consumed_amount;
+            flow
+                .entry(input.resource.clone())
+                .or_insert_with(Rate::default)
+                .consumed -= consumed_amount;
+        }
+    }
+
+    fn produce_outputs(
+        inventory: &mut HashMap<String, f64>,
+        flow: &mut HashMap<String, Rate>,
+        outputs: &[ResourceAmount],
+        count: u32,
+    ) {
+        for output in outputs {
+            let produced_amount = output.amount * count as f64;
+            *inventory.entry(output.resource.clone()).or_insert(0.0) += produced_amount;
+            flow
+                .entry(output.resource.clone())
+                .or_insert_with(Rate::default)
+                .produced += produced_amount;
+        }
+    }
+
     fn tick_group(
         group: &mut BuildingGroupInstance,
         inventory: &mut HashMap<String, f64>,
@@ -640,14 +685,7 @@ impl Game {
 
             // Cycle complete: produce outputs for building was
             // actively working this cycle.
-            for output in &group.process.outputs {
-                *inventory.entry(output.resource.clone()).or_insert(0.0) +=
-                    output.amount * group.active_count as f64;
-                flow
-                    .entry(output.resource.clone())
-                    .or_insert_with(Rate::default)
-                    .produced += output.amount * group.active_count as f64;
-            }
+            Self::produce_outputs(inventory, flow, &group.process.outputs, group.active_count);
 
             // Buiildings that just finished and and those in idle count (new arrivals or previously resource-starved)
             // now compete together for the next cycle.
@@ -660,14 +698,7 @@ impl Game {
 
             if starting > 0 {
                 // Consume inputs for the buildings that will start the next cycle.
-                for input in &group.process.inputs {
-                    *inventory.entry(input.resource.clone()).or_insert(0.0) -=
-                        input.amount * starting as f64;
-                    flow
-                        .entry(input.resource.clone())
-                        .or_insert_with(Rate::default)
-                        .consumed -= input.amount * starting as f64;
-                }
+                Self::consume_inputs(inventory, flow, &group.process.inputs, starting);
             }
             group.active_count = starting;
             group.idle_count = candidates.saturating_sub(starting);
@@ -679,14 +710,7 @@ impl Game {
             let starting = Self::max_affordable(inventory, &group.process.inputs, group.idle_count);
             if starting > 0 {
                 // Consume inputs for the buildings that will start the next cycle.
-                for input in &group.process.inputs {
-                    *inventory.entry(input.resource.clone()).or_insert(0.0) -=
-                        input.amount * starting as f64;
-                    flow
-                        .entry(input.resource.clone())
-                        .or_insert_with(Rate::default)
-                        .consumed -= input.amount * starting as f64;
-                }
+                Self::consume_inputs(inventory, flow, &group.process.inputs, starting);
 
                 group.active_count = starting;
                 group.idle_count = group.idle_count.saturating_sub(starting);
