@@ -3,14 +3,12 @@ import init, { Game } from "pkg/overseer";
 import type { BuildingGroupInstance, InventoryEntry, ProductionChartSeries } from "pkg/overseer";
 import gameData from "@/game/game-data.json";
 
-// Simulation cadence, decoupled from how often the UI snapshot is refreshed.
-const TICK_MS = 16;
-// UI snapshot refresh cadence; throttled below tick rate to limit re-renders.
-const RENDER_MS = 40;
-// Exposed so components (e.g. ProgressBar) can sync CSS transitions to the snapshot cadence.
-export const UI_SNAPSHOT_INTERVAL_MS = RENDER_MS;
-// Matches the 60-entry rolling window the production charts render (1 sample/sec).
-const SAMPLE_MS = 1000;
+// Simulation tick interval in milliseconds
+const TICK_MS = 16.667; // 60 FPS
+
+// 
+const SAMPLE_INTERVAL = 1.0;
+const SAMPLE_LENGTH = 30;
 
 interface GameSnapshot {
   buildings: BuildingGroupInstance[];
@@ -41,7 +39,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     void init().then(() => {
       if (cancelled) return;
-      const game = new Game(gameData);
+      const game = new Game(gameData, SAMPLE_INTERVAL, SAMPLE_LENGTH);
       gameRef.current = game;
       setSnapshot(readSnapshot(game));
       setIsReady(true);
@@ -63,22 +61,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       const deltaSeconds = (now - lastTick) / 1000;
       lastTick = now;
       game.tick(deltaSeconds);
-    }, TICK_MS);
-
-    const sampleIntervalId = window.setInterval(() => {
-      gameRef.current?.sampleResourceFlowHistory();
-    }, SAMPLE_MS);
-
-    const renderIntervalId = window.setInterval(() => {
-      const game = gameRef.current;
-      if (!game) return;
       setSnapshot(readSnapshot(game));
-    }, RENDER_MS);
+    }, TICK_MS);
 
     return () => {
       window.clearInterval(tickIntervalId);
-      window.clearInterval(sampleIntervalId);
-      window.clearInterval(renderIntervalId);
     };
   }, [isReady]);
 
