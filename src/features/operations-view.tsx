@@ -253,6 +253,8 @@ export const OperationsView = () => {
                           <ProgressBar
                             mode={(isResourceProducer || isResourceConsumer) ? "progress" : "continuous"}
                             value={(isResourceProducer || isResourceConsumer) ? process.progress_percent : 100}
+                            duration={100*process.duration/process.efficiency_percent}
+                            active={active_count > 0}
                           />
                           <ItemDescription className="flex flex-col">
                             {isResourceConsumer && (
@@ -410,6 +412,8 @@ export const OperationsView = () => {
                           <ProgressBar
                             mode={(isResourceProducer || isResourceConsumer) ? "progress" : "continuous"}
                             value={(isResourceProducer || isResourceConsumer) ? process.progress_percent : 100}
+                            duration={100*process.duration/process.efficiency_percent}
+                            active={active_count > 0}
                           />
                           <ItemDescription className="flex flex-col">
                             {isResourceConsumer && (
