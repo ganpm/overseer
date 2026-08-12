@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Separator } from "@/components/ui/separator";
 import { CartesianGrid, Bar, BarChart, XAxis, YAxis, ReferenceLine } from "recharts";
 import {
   Card,
@@ -37,7 +38,6 @@ import {
 import { filterAndSort } from "@/lib/filter-sort";
 import type { ProductionChartSeries } from "pkg/overseer";
 
-export const description = "Produced and consumed amounts per second over the last minute"
 
 const toLocaleString = (number: number) => number.toLocaleString(undefined, { maximumFractionDigits: 2 })
 
@@ -101,15 +101,11 @@ export function ProductionView({
   } satisfies ChartConfig
 
   return (
-    <div className="mx-4 mt-4 space-y-2 pb-16">
-      <Card>
-        <CardHeader>
-          <CardTitle>Production Throughput Dashboard</CardTitle>
-          <CardDescription>
-            Each chart shows produced and consumed amounts per second for the last 60 seconds.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+    <div className="flex flex-col gap-2 mx-4 mt-4 mb-16">
+      <span className="font-heading text-base font-medium">
+        Production
+      </span>
+      <Separator />
       <div className="flex gap-1">
         <InputGroup>
           <InputGroupInput
