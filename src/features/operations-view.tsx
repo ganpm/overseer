@@ -231,7 +231,9 @@ export const OperationsView = ({
                   <InputGroupAddon>
                     <Search />
                   </InputGroupAddon>
-                  <InputGroupAddon align="inline-end">{generators.length} results</InputGroupAddon>
+                  {searchQueryGenerator.trim() !== "" && (
+                    <InputGroupAddon align="inline-end">{generators.length} results</InputGroupAddon>
+                  )}
                 </InputGroup>
                 <SortController
                   sortState={sortStateGenerator}
@@ -390,7 +392,9 @@ export const OperationsView = ({
                   <InputGroupAddon>
                     <Search />
                   </InputGroupAddon>
-                  <InputGroupAddon align="inline-end">{producers.length} results</InputGroupAddon>
+                  {searchQueryProducer.trim() !== "" && (
+                    <InputGroupAddon align="inline-end">{producers.length} results</InputGroupAddon>
+                  )}
                 </InputGroup>
                 <SortController
                   sortState={sortStateProducer}
@@ -513,7 +517,9 @@ export const OperationsView = ({
                   <InputGroupAddon>
                     <Search />
                   </InputGroupAddon>
-                  <InputGroupAddon align="inline-end">{inventory.length} results</InputGroupAddon>
+                  {searchQueryInventory.trim() !== "" && (
+                    <InputGroupAddon align="inline-end">{inventory.length} results</InputGroupAddon>
+                  )}
                 </InputGroup>
                 <SortController
                   sortState={sortStateInventory}
