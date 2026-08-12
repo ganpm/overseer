@@ -58,15 +58,15 @@ import {
 import { filterAndSort } from "@/lib/filter-sort";
 import type { BuildingGroupInstance, InventoryEntry } from "pkg/overseer";
 
-export interface OperationsViewProps {
+export interface ProductionOverviewProps {
   game: Game,
   snapshot: GameSnapshot,
 }
 
-export const OperationsView = ({
+export const ProductionOverview = ({
   game,
   snapshot,
-}: OperationsViewProps) => {
+}: ProductionOverviewProps) => {
   const availableGenerators = Object.values(game.data.buildings).filter((building) =>
     building.available_processes.some((processName) => {
       const process = game.data.processes[processName];
@@ -177,7 +177,7 @@ export const OperationsView = ({
   return (
     <div className="flex flex-col gap-2 mt-4 mx-4 mb-16">
       <span className="font-heading text-base font-medium">
-        Operations
+        Production
       </span>
       <Separator />
       <Accordion multiple defaultValue={["power-generators", "production-buildings", "inventory"]}>
