@@ -127,17 +127,13 @@ export function ProductionView({
         />
       </div>
       {chartSeries.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            
-          </CardContent>
-        </Card>
+        <p className="flex justify-center text-muted-foreground my-5">
+          No flow data yet. Start production to populate charts.
+        </p>
       ) : queriedCharts.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            No charts match the search query.
-          </CardContent>
-        </Card>
+        <p className="flex justify-center text-muted-foreground my-5">
+          No charts match the search query.
+        </p>
       ) : (
         <div className="flex flex-col space-y-2">
           {queriedCharts
