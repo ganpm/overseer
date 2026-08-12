@@ -46,13 +46,13 @@ const isEffectivelyZero = (value: number) => Math.abs(value) < 1e-9;
 const hasAnyFlowInHistory = (series: ProductionChartSeries) =>
   series.points.some((point) => !isEffectivelyZero(point.produced) || !isEffectivelyZero(point.consumed));
 
-export interface ProductionViewProps {
+export interface AnalyticsOverviewProps {
   chartData: ProductionChartSeries[];
 }
 
-export function ProductionView({
+export function AnalyticsOverview({
   chartData,
-}: ProductionViewProps) {
+}: AnalyticsOverviewProps) {
   const chartSeries = chartData.filter((series) =>
     !isEffectivelyZero(series.current_amount)
     || !isEffectivelyZero(series.average_rate)
@@ -103,7 +103,7 @@ export function ProductionView({
   return (
     <div className="flex flex-col gap-2 mx-4 mt-4 mb-16">
       <span className="font-heading text-base font-medium">
-        Production
+        Analytics
       </span>
       <Separator />
       <div className="flex gap-1">
