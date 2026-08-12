@@ -182,7 +182,7 @@ export const OperationsView = ({
       <Separator />
       <Accordion multiple defaultValue={["power-generators", "production-buildings", "inventory"]}>
         <AccordionItem value="power-generators">
-          <AccordionTrigger>Power Generators</AccordionTrigger>
+          <AccordionTrigger>Power Generators ({constructedGenerators.length})</AccordionTrigger>
           <AccordionContent>
             <div className="space-y-2">
               <div className="flex gap-1">
@@ -343,7 +343,7 @@ export const OperationsView = ({
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="production-buildings">
-          <AccordionTrigger>Production Buildings</AccordionTrigger>
+          <AccordionTrigger>Production Buildings ({constructedProducers.length})</AccordionTrigger>
           <AccordionContent>
             <div className="space-y-2">
               <div className="flex gap-1">
@@ -504,7 +504,7 @@ export const OperationsView = ({
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="inventory">
-          <AccordionTrigger>Inventory</AccordionTrigger>
+          <AccordionTrigger>Inventory ({inventory.length})</AccordionTrigger>
           <AccordionContent>
             <div className="space-y-2">
               <div className="flex gap-1">
