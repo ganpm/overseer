@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Game } from "pkg/overseer";
 import type { GameSnapshot } from "@/game/game-context.tsx";
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -174,7 +175,11 @@ export const OperationsView = ({
   });
 
   return (
-    <div className="flex flex-col mt-4 mb-10 mx-4">
+    <div className="flex flex-col gap-2 mt-4 mx-4 mb-16">
+      <span className="font-heading text-base font-medium">
+        Operations
+      </span>
+      <Separator />
       <Accordion multiple defaultValue={["power-generators", "production-buildings", "inventory"]}>
         <AccordionItem value="power-generators">
           <AccordionTrigger>Power Generators</AccordionTrigger>
