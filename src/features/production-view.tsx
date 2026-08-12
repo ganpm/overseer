@@ -116,7 +116,9 @@ export function ProductionView({
           <InputGroupAddon>
             <Search />
           </InputGroupAddon>
-          <InputGroupAddon align="inline-end">{queriedCharts.length} results</InputGroupAddon>
+          {searchQuery && (
+            <InputGroupAddon align="inline-end">{queriedCharts.length} results</InputGroupAddon>
+          )}
         </InputGroup>
         <SortController
           sortState={sortStateCharts}
@@ -127,7 +129,7 @@ export function ProductionView({
       {chartSeries.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            No flow data yet. Start production to populate charts.
+            
           </CardContent>
         </Card>
       ) : queriedCharts.length === 0 ? (
