@@ -1,3 +1,4 @@
+import { useGame } from "@/game/game-context.tsx";
 import {
   Tabs,
   TabsList,
@@ -17,6 +18,7 @@ const getPanelClassName = (isActive: boolean) =>
     : "invisible absolute inset-0 pointer-events-none";
 
 export const App = () => {
+  const { game, snapshot, chartData } = useGame();
   const [activeTab, setActiveTab] = useState<TabValue>("operations");
 
   return (
@@ -24,17 +26,17 @@ export const App = () => {
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)}>
         <div className="relative flex-1 pb-16">
           <div className={getPanelClassName(activeTab === "operations")}>
-          <OperationsView />
+            <OperationsView game={game} snapshot={snapshot} />
           </div>
 
           {activeTab === "production" && (
             <div className={getPanelClassName(true)}>
-            <ProductionView />
+              <ProductionView chartData={chartData} />
             </div>
           )}
 
           <div className={getPanelClassName(activeTab === "power-grid")}>
-          <PowerGridView />
+            <PowerGridView />
           </div>
         </div>
 

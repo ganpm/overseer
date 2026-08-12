@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useGame } from "@/game/game-context.tsx";
+import type { Game } from "pkg/overseer";
+import type { GameSnapshot } from "@/game/game-context.tsx";
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -56,8 +57,15 @@ import {
 import { filterAndSort } from "@/lib/filter-sort";
 import type { BuildingGroupInstance, InventoryEntry } from "pkg/overseer";
 
-export const OperationsView = () => {
-  const { game, snapshot } = useGame();
+export interface OperationsViewProps {
+  game: Game,
+  snapshot: GameSnapshot,
+}
+
+export const OperationsView = ({
+  game,
+  snapshot,
+}: OperationsViewProps) => {
   const availableGenerators = Object.values(game.data.buildings).filter((building) =>
     building.available_processes.some((processName) => {
       const process = game.data.processes[processName];

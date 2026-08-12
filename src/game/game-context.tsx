@@ -5,20 +5,21 @@ import gameData from "@/game/game-data.json";
 
 // Simulation tick interval in milliseconds
 const TICK_MS = 16.667; // 60 FPS
+const MAX_CATCH_UP_TICKS = 5;
 
 // 
 const SAMPLE_INTERVAL = 1.0;
 const SAMPLE_LENGTH = 30;
 
-interface GameSnapshot {
+export interface GameSnapshot {
   buildings: BuildingGroupInstance[];
   inventory: InventoryEntry[];
-  productionChartData: ProductionChartSeries[];
 }
 
-interface GameContextValue {
+export interface GameContextValue {
   game: Game;
   snapshot: GameSnapshot;
+  chartData: ProductionChartSeries[];
 }
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -26,12 +27,12 @@ const GameContext = createContext<GameContextValue | null>(null);
 const readSnapshot = (game: Game): GameSnapshot => ({
   buildings: game.buildings,
   inventory: game.inventory,
-  productionChartData: game.getProductionChartSeries(),
 });
 
 export const GameProvider = ({ children }: { children: ReactNode }) => {
   const gameRef = useRef<Game | null>(null);
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
+  const [chartData, setChartData] = useState<ProductionChartSeries[]>([]);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -54,18 +55,42 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     if (!isReady) return;
 
     let lastTick = performance.now();
+    let accumulatorMs = 0;
     const tickIntervalId = window.setInterval(() => {
       const game = gameRef.current;
       if (!game) return;
+  
       const now = performance.now();
-      const deltaSeconds = (now - lastTick) / 1000;
+      const frameDeltaMs = Math.min(now - lastTick, TICK_MS * MAX_CATCH_UP_TICKS);
       lastTick = now;
-      game.tick(deltaSeconds);
+      accumulatorMs += frameDeltaMs;
+
+      let changed = false;
+      let steps = 0;
+      while (accumulatorMs >= TICK_MS && steps < MAX_CATCH_UP_TICKS) {
+        changed = game.tick(TICK_MS / 1000) || changed;
+        accumulatorMs -= TICK_MS;
+        steps += 1;
+      }
+
       setSnapshot(readSnapshot(game));
     }, TICK_MS);
 
+    let lastChartRefresh = performance.now();
+    const chartRefreshIntervalId = window.setInterval(() => {
+      const game = gameRef.current;
+      if (!game) return;
+      
+      const now = performance.now();
+      if (now - lastChartRefresh >= SAMPLE_INTERVAL * 1000) {
+        lastChartRefresh = now;
+        setChartData(game.getProductionChartSeries());
+      }
+    }, SAMPLE_INTERVAL * 1000);
+
     return () => {
       window.clearInterval(tickIntervalId);
+      window.clearInterval(chartRefreshIntervalId);
     };
   }, [isReady]);
 
@@ -74,7 +99,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <GameContext.Provider value={{ game: gameRef.current, snapshot }}>
+    <GameContext.Provider value={{ game: gameRef.current, snapshot, chartData }}>
       {children}
     </GameContext.Provider>
   );

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { CartesianGrid, Bar, BarChart, XAxis, YAxis, ReferenceLine } from "recharts";
-import { useGame } from "@/game/game-context.tsx";
 import {
   Card,
   CardContent,
@@ -47,9 +46,14 @@ const isEffectivelyZero = (value: number) => Math.abs(value) < 1e-9;
 const hasAnyFlowInHistory = (series: ProductionChartSeries) =>
   series.points.some((point) => !isEffectivelyZero(point.produced) || !isEffectivelyZero(point.consumed));
 
-export function ProductionView() {
-  const { snapshot } = useGame()
-  const chartSeries = snapshot.productionChartData.filter((series) =>
+export interface ProductionViewProps {
+  chartData: ProductionChartSeries[];
+}
+
+export function ProductionView({
+  chartData,
+}: ProductionViewProps) {
+  const chartSeries = chartData.filter((series) =>
     !isEffectivelyZero(series.current_amount)
     || !isEffectivelyZero(series.average_rate)
     || hasAnyFlowInHistory(series)
