@@ -2,12 +2,11 @@ import { useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { CartesianGrid, Bar, BarChart, XAxis, YAxis, ReferenceLine } from "recharts";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Item,
+  ItemContent,
+  ItemTitle,
+  ItemDescription,
+} from "@/components/ui/item";
 import {
   InputGroup,
   InputGroupAddon,
@@ -98,7 +97,7 @@ export function AnalyticsOverview({
       label: "Consumed",
       color: "oklch(0.62 0.19 25)",
     },
-  } satisfies ChartConfig
+  } satisfies ChartConfig;
 
   return (
     <div className="flex flex-col gap-2 mx-4 mt-4 mb-16">
@@ -136,8 +135,7 @@ export function AnalyticsOverview({
         </p>
       ) : (
         <div className="flex flex-col space-y-2">
-          {queriedCharts
-            .map((series) => {
+          {queriedCharts.map((series) => {
             const resourceName = series.resource_name;
 
             const currentAmountString = toLocaleString(series.current_amount);
@@ -147,12 +145,12 @@ export function AnalyticsOverview({
             const trendIcon = series.average_rate > 0 ? <TrendingUp /> : series.average_rate < 0 ? <TrendingDown /> : <TrendingNeutral />;
 
             return (
-              <Card key={resourceName}>
-                <CardHeader>
-                  <CardTitle className="flex gap-1">{resourceName} {trendIcon}
-
-                  </CardTitle>
-                  <CardDescription>
+              <Item key={resourceName} variant="outline">
+                <ItemContent>
+                  <ItemTitle className="flex items-center gap-2">
+                    {resourceName} {trendIcon}
+                  </ItemTitle>
+                  <ItemDescription className="flex flex-col gap-1">
                     <div className="flex gap-2">
                       <span className="flex flex-1 justify-start items-center gap-1">
                         <Package size={14} />
@@ -171,9 +169,7 @@ export function AnalyticsOverview({
                         {averageConsumptionString}/s
                       </span>
                     </div>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
+                  </ItemDescription>
                   <ChartContainer config={config} className="h-30 w-full">
                     <BarChart
                       data={series.points}
@@ -211,8 +207,8 @@ export function AnalyticsOverview({
                       />
                     </BarChart>
                   </ChartContainer>
-                </CardContent>
-              </Card>
+                </ItemContent>
+              </Item>
             )
           })}
         </div>
