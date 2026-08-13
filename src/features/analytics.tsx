@@ -32,8 +32,8 @@ import {
 import {
   SortController,
   type SortState,
-  type SortConfigMap,
-  sortDirectionMult,
+  type SortConfig,
+  selectSortFn,
 } from "@/components/sort-controller";
 import { filterAndSort } from "@/lib/filter-sort";
 import type { ProductionChartSeries } from "pkg/overseer";
@@ -66,27 +66,27 @@ export function AnalyticsOverview({
     direction: "ascending",
   });
   
-  const sortConfigCharts: SortConfigMap<ProductionChartSeries> = new Map([
-    ["resource_name", {
+  const sortConfigCharts: SortConfig<ProductionChartSeries> = {
+    "resource_name": {
       label: "Resource",
       sortFn: (a, b) => a.resource_name.localeCompare(b.resource_name),
-    }],
-    ["current_amount", {
+    },
+    "current_amount": {
       label: "Amount",
       sortFn: (a, b) => a.current_amount - b.current_amount,
-    }],
-    ["average_rate", {
+    },
+    "average_rate": {
       label: "Average Rate",
       sortFn: (a, b) => a.average_rate - b.average_rate,
-    }],
-  ]);
+    },
+  };
 
   const queriedCharts = filterAndSort(chartSeries, {
     query: searchQuery,
     filters: [
       (series) => series.resource_name,
     ],
-    sortFn: (a, b) => (sortConfigCharts.get(sortStateCharts.field)?.sortFn(a, b) ?? 0) * sortDirectionMult[sortStateCharts.direction]
+    sortFn: selectSortFn(sortConfigCharts, sortStateCharts),
   });
 
   const config = {

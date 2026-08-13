@@ -21,22 +21,35 @@ export interface SortState<T> {
   direction: SortDirection;
 }
 
-export interface SortConfig<T> {
-  label: string;
-  sortFn: (a: T, b: T) => number;
+export type SortConfig<T> = Partial<
+  Record<
+    keyof T & string,
+    { label: string; sortFn: (a: T, b: T) => number }
+  >
+>;
+
+export function selectSortFn<T>(
+  sortConfig: SortConfig<T>,
+  sortState: SortState<T>,
+): ((a: T, b: T) => number) | undefined {
+  const sortFn = sortConfig[sortState.field]?.sortFn;
+  if (!sortFn) return undefined;
+  return (a: T, b: T) => {
+    const result = sortFn(a, b);
+    return sortState.direction === "ascending" ? result : -result;
+  };
 }
 
-export const sortDirectionMult: Record<SortDirection, number> = {
-  ascending: 1,
-  descending: -1,
-};
-
-export type SortConfigMap<T> = Map<keyof T & string, SortConfig<T>>;
+export function entries<T extends object>(
+  obj: T
+): Array<[keyof T, T[keyof T]]> {
+  return Object.entries(obj) as Array<[keyof T, T[keyof T]]>;
+}
 
 export interface SortControllerProps<T> {
   sortState: SortState<T>;
   onChange: (next: SortState<T>) => void;
-  config: SortConfigMap<T>;
+  config: SortConfig<T>;
 }
 
 export function SortController<T>({
@@ -81,9 +94,9 @@ export function SortController<T>({
                 direction: sortState.direction,
               })
             }}>
-              {Array.from(config, ([value, { label }]) => (
+              {entries(config).map(([value, option]) => (
                 <DropdownMenuRadioItem key={value} value={value} closeOnClick>
-                  {label}
+                  {option?.label}
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>

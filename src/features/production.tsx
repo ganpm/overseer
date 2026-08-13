@@ -37,8 +37,8 @@ import {
 import {
   SortController,
   type SortState,
-  type SortConfigMap,
-  sortDirectionMult,
+  type SortConfig,
+  selectSortFn,
 } from "@/components/sort-controller";
 import {
   Plus,
@@ -93,56 +93,56 @@ export const ProductionOverview = ({
     direction: "ascending",
   });
 
-  const sortConfigGenerator: SortConfigMap<BuildingGroupInstance> = new Map([
-    ["building_name", {
+  const sortConfigGenerator: SortConfig<BuildingGroupInstance> = {
+    "building_name": {
       label: "Type",
       sortFn: (a, b) => a.building_name.localeCompare(b.building_name),
-    }],
-    ["total_count", {
+    },
+    "total_count": {
       label: "Count",
       sortFn: (a, b) => a.total_count - b.total_count,
-    }],
-    ["process", {
+    },
+    "process": {
       label: "Process",
       sortFn: (a, b) => a.process.process_name.localeCompare(b.process.process_name),
-    }],
-  ]);
+    },
+  };
 
   const [sortStateProducer, setSortStateProducer] = useState<SortState<BuildingGroupInstance>>({
     field: "building_name",
     direction: "ascending",
   });
 
-  const sortConfigProducer: SortConfigMap<BuildingGroupInstance> = new Map([
-    ["building_name", {
+  const sortConfigProducer: SortConfig<BuildingGroupInstance> = {
+    "building_name": {
       label: "Type",
       sortFn: (a, b) => a.building_name.localeCompare(b.building_name),
-    }],
-    ["total_count", {
+    },
+    "total_count": {
       label: "Count",
       sortFn: (a, b) => a.total_count - b.total_count,
-    }],
-    ["process", {
+    },
+    "process": {
       label: "Process",
       sortFn: (a, b) => a.process.process_name.localeCompare(b.process.process_name),
-    }],
-  ]);
+    },
+  };
 
   const [sortStateInventory, setSortStateInventory] = useState<SortState<InventoryEntry>>({
     field: "resource",
     direction: "ascending",
   });
 
-  const sortConfigInventory: SortConfigMap<InventoryEntry> = new Map([
-    ["resource", {
+  const sortConfigInventory: SortConfig<InventoryEntry> = {
+    "resource": {
       label: "Name",
       sortFn: (a, b) => a.resource.localeCompare(b.resource),
-    }],
-    ["amount", {
+    },
+    "amount": {
       label: "Amount",
       sortFn: (a, b) => a.amount - b.amount,
-    }],
-  ]);
+    },
+  };
 
   const generators = filterAndSort(constructedGenerators, {
     query: searchQueryGenerator,
@@ -152,7 +152,7 @@ export const ProductionOverview = ({
       (building) => building.process.inputs.map((input) => input.resource).join(" "),
       (building) => building.process.outputs.map((output) => output.resource).join(" "),
     ],
-    sortFn: (a, b) => (sortConfigGenerator.get(sortStateGenerator.field)?.sortFn(a, b) ?? 0) * sortDirectionMult[sortStateGenerator.direction],
+    sortFn: selectSortFn(sortConfigGenerator, sortStateGenerator),
   });
 
   const producers = filterAndSort(constructedProducers, {
@@ -163,7 +163,7 @@ export const ProductionOverview = ({
       (building) => building.process.inputs.map((input) => input.resource).join(" "),
       (building) => building.process.outputs.map((output) => output.resource).join(" "),
     ],
-    sortFn: (a, b) => (sortConfigProducer.get(sortStateProducer.field)?.sortFn(a, b) ?? 0) * sortDirectionMult[sortStateProducer.direction],
+    sortFn: selectSortFn(sortConfigProducer, sortStateProducer),
   });
 
   const inventory = filterAndSort(rawInventory, {
@@ -171,7 +171,7 @@ export const ProductionOverview = ({
     filters: [
       (entry) => entry.resource,
     ],
-    sortFn: (a, b) => (sortConfigInventory.get(sortStateInventory.field)?.sortFn(a, b) ?? 0) * sortDirectionMult[sortStateInventory.direction],
+    sortFn: selectSortFn(sortConfigInventory, sortStateInventory),
   });
 
   return (
