@@ -13,6 +13,7 @@ import init, {
   type ProductionChartSeries,
 } from "pkg/overseer";
 import gameData from "@/game/game-data.json";
+import { validateGameData } from "@/game/game-data.schema";
 import { Spinner } from "@/components/ui/spinner";
 
 // Simulation tick interval in milliseconds
@@ -55,7 +56,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     void init().then(() => {
       if (cancelled) return;
-      const game = new Game(gameData, SAMPLE_INTERVAL, SAMPLE_LENGTH);
+      const validatedGameData = validateGameData(gameData);
+      const game = new Game(validatedGameData, SAMPLE_INTERVAL, SAMPLE_LENGTH);
       gameRef.current = game;
       setSnapshot(readSnapshot(game));
       setIsReady(true);
