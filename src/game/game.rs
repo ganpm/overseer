@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::*;
 /// Represents a resource in the game.
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct Resource {
     name: String,
 }
@@ -13,6 +14,7 @@ pub struct Resource {
 /// Represents a specific amount of a resource.
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct ResourceAmount {
     amount: f64,
     resource: String,
@@ -21,6 +23,7 @@ pub struct ResourceAmount {
 /// Represents a process that can be run in a building.
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct Process {
     name: String,
     duration: f64,
@@ -33,6 +36,7 @@ pub struct Process {
 /// Represents a building in the game.
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct Building {
     name: String,
     available_processes: Vec<String>,
@@ -43,6 +47,7 @@ pub struct Building {
 /// This struct is used to track the state of a process, including its progress and efficiency.
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct ProcessInstance {
     process_name: String,
     power_consumption: f64,
@@ -59,6 +64,7 @@ pub struct ProcessInstance {
 /// This struct is used to track the state of a building group, including the number of active and pending buildings, as well as the total count of buildings in the group.
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct BuildingGroupInstance {
     building_name: String,
     process: ProcessInstance,
@@ -71,6 +77,7 @@ pub struct BuildingGroupInstance {
 
 #[derive(Tsify, Serialize, Deserialize, Clone, Default)]
 #[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct Rate {
     produced: f64,
     consumed: f64,
@@ -78,6 +85,7 @@ pub struct Rate {
 
 #[derive(Tsify, Serialize, Deserialize, Clone, Default)]
 #[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct RateHistory {
     produced: VecDeque<f64>,
     consumed: VecDeque<f64>,
@@ -85,6 +93,7 @@ pub struct RateHistory {
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(from_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct JSONGameData {
     resources: Vec<Resource>,
     processes: Vec<Process>,
@@ -213,6 +222,7 @@ fn validate_data(data: &JSONGameData) -> Result<(), String> {
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct GameData {
     resources: HashMap<String, Resource>,
     processes: HashMap<String, Process>,
@@ -222,6 +232,7 @@ pub struct GameData {
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct ProductionChartPoint {
     label: String,
     produced: f64,
@@ -230,6 +241,7 @@ pub struct ProductionChartPoint {
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct ProductionChartSeries {
     resource_name: String,
     current_amount: f64,
@@ -241,6 +253,7 @@ pub struct ProductionChartSeries {
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct InventoryEntry {
     resource: String,
     amount: f64,
@@ -248,6 +261,7 @@ pub struct InventoryEntry {
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct RateHistoryEntry {
     resource: String,
     rate: RateHistory,

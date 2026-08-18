@@ -53,37 +53,37 @@ export function AnalyticsOverview({
   chartData,
 }: AnalyticsOverviewProps) {
   const chartSeries = chartData.filter((series) =>
-    !isEffectivelyZero(series.current_amount)
-    || !isEffectivelyZero(series.average_rate)
+    !isEffectivelyZero(series.currentAmount)
+    || !isEffectivelyZero(series.averageRate)
     || hasAnyFlowInHistory(series)
   );
 
   const [searchQuery, setSearchQuery] = useState("");
 
   const [sortStateCharts, setSortStateCharts] = useState<SortState<ProductionChartSeries>>({
-    field: "resource_name",
+    field: "resourceName",
     direction: "ascending",
   });
   
   const sortConfigCharts: SortConfig<ProductionChartSeries> = {
-    "resource_name": {
+    "resourceName": {
       label: "Resource",
-      sortFn: (a, b) => a.resource_name.localeCompare(b.resource_name),
+      sortFn: (a, b) => a.resourceName.localeCompare(b.resourceName),
     },
-    "current_amount": {
+    "currentAmount": {
       label: "Amount",
-      sortFn: (a, b) => a.current_amount - b.current_amount,
+      sortFn: (a, b) => a.currentAmount - b.currentAmount,
     },
-    "average_rate": {
+    "averageRate": {
       label: "Average Rate",
-      sortFn: (a, b) => a.average_rate - b.average_rate,
+      sortFn: (a, b) => a.averageRate - b.averageRate,
     },
   };
 
   const queriedCharts = filterAndSort(chartSeries, {
     query: searchQuery,
     filters: [
-      (series) => series.resource_name,
+      (series) => series.resourceName,
     ],
     sortFn: selectSortFn(sortConfigCharts, sortStateCharts),
   });
@@ -136,13 +136,13 @@ export function AnalyticsOverview({
       ) : (
         <div className="flex flex-col space-y-2">
           {queriedCharts.map((series) => {
-            const resourceName = series.resource_name;
+            const resourceName = series.resourceName;
 
-            const currentAmountString = toLocaleString(series.current_amount);
-            const averageRateString = toLocaleString(series.average_rate);
-            const averageProductionString = toLocaleString(series.average_production);
-            const averageConsumptionString = toLocaleString(series.average_consumption);
-            const trendIcon = series.average_rate > 0 ? <TrendingUp /> : series.average_rate < 0 ? <TrendingDown /> : <TrendingNeutral />;
+            const currentAmountString = toLocaleString(series.currentAmount);
+            const averageRateString = toLocaleString(series.averageRate);
+            const averageProductionString = toLocaleString(series.averageProduction);
+            const averageConsumptionString = toLocaleString(series.averageConsumption);
+            const trendIcon = series.averageRate > 0 ? <TrendingUp /> : series.averageRate < 0 ? <TrendingDown /> : <TrendingNeutral />;
 
             return (
               <Item key={resourceName} variant="outline">

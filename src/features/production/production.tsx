@@ -68,20 +68,20 @@ export const ProductionOverview = ({
   snapshot,
 }: ProductionOverviewProps) => {
   const availableGenerators = Object.values(game.data.buildings).filter((building) =>
-    building.available_processes.some((processName) => {
+    building.availableProcesses.some((processName) => {
       const process = game.data.processes[processName];
-      return process.power_generation > 0;
+      return process.powerGeneration > 0;
     })
   );
   const availableProducers = Object.values(game.data.buildings).filter((building) =>
-    building.available_processes.some((processName) => {
+    building.availableProcesses.some((processName) => {
       const process = game.data.processes[processName];
-      return process.power_consumption > 0;
+      return process.powerConsumption > 0;
     })
   );
-  const constructedBuildings = snapshot.buildings.filter((building) => building.total_count > 0);
-  const constructedGenerators = constructedBuildings.filter((building) => building.process.power_generation > 0);
-  const constructedProducers = constructedBuildings.filter((building) => building.process.power_consumption > 0);
+  const constructedBuildings = snapshot.buildings.filter((building) => building.totalCount > 0);
+  const constructedGenerators = constructedBuildings.filter((building) => building.process.powerGeneration > 0);
+  const constructedProducers = constructedBuildings.filter((building) => building.process.powerConsumption > 0);
   const rawInventory = [...snapshot.inventory];
 
   const [searchQueryGenerator, setSearchQueryGenerator] = useState("");
@@ -89,42 +89,42 @@ export const ProductionOverview = ({
   const [searchQueryInventory, setSearchQueryInventory] = useState("");
 
   const [sortStateGenerator, setSortStateGenerator] = useState<SortState<BuildingGroupInstance>>({
-    field: "building_name",
+    field: "buildingName",
     direction: "ascending",
   });
 
   const sortConfigGenerator: SortConfig<BuildingGroupInstance> = {
-    "building_name": {
+    "buildingName": {
       label: "Type",
-      sortFn: (a, b) => a.building_name.localeCompare(b.building_name),
+      sortFn: (a, b) => a.buildingName.localeCompare(b.buildingName),
     },
-    "total_count": {
+    "totalCount": {
       label: "Count",
-      sortFn: (a, b) => a.total_count - b.total_count,
+      sortFn: (a, b) => a.totalCount - b.totalCount,
     },
     "process": {
       label: "Process",
-      sortFn: (a, b) => a.process.process_name.localeCompare(b.process.process_name),
+      sortFn: (a, b) => a.process.processName.localeCompare(b.process.processName),
     },
   };
 
   const [sortStateProducer, setSortStateProducer] = useState<SortState<BuildingGroupInstance>>({
-    field: "building_name",
+    field: "buildingName",
     direction: "ascending",
   });
 
   const sortConfigProducer: SortConfig<BuildingGroupInstance> = {
-    "building_name": {
+    "buildingName": {
       label: "Type",
-      sortFn: (a, b) => a.building_name.localeCompare(b.building_name),
+      sortFn: (a, b) => a.buildingName.localeCompare(b.buildingName),
     },
-    "total_count": {
+    "totalCount": {
       label: "Count",
-      sortFn: (a, b) => a.total_count - b.total_count,
+      sortFn: (a, b) => a.totalCount - b.totalCount,
     },
     "process": {
       label: "Process",
-      sortFn: (a, b) => a.process.process_name.localeCompare(b.process.process_name),
+      sortFn: (a, b) => a.process.processName.localeCompare(b.process.processName),
     },
   };
 
@@ -147,8 +147,8 @@ export const ProductionOverview = ({
   const generators = filterAndSort(constructedGenerators, {
     query: searchQueryGenerator,
     filters: [
-      (building) => building.building_name,
-      (building) => building.process.process_name,
+      (building) => building.buildingName,
+      (building) => building.process.processName,
       (building) => building.process.inputs.map((input) => input.resource).join(" "),
       (building) => building.process.outputs.map((output) => output.resource).join(" "),
     ],
@@ -158,8 +158,8 @@ export const ProductionOverview = ({
   const producers = filterAndSort(constructedProducers, {
     query: searchQueryProducer,
     filters: [
-      (building) => building.building_name,
-      (building) => building.process.process_name,
+      (building) => building.buildingName,
+      (building) => building.process.processName,
       (building) => building.process.inputs.map((input) => input.resource).join(" "),
       (building) => building.process.outputs.map((output) => output.resource).join(" "),
     ],
@@ -204,7 +204,7 @@ export const ProductionOverview = ({
                                 <DropdownMenuLabel>
                                   {building.name} Processes
                                 </DropdownMenuLabel>
-                                {building.available_processes.map(
+                                {building.availableProcesses.map(
                                   (process) => (
                                     <DropdownMenuItem
                                       key={process}
@@ -251,37 +251,37 @@ export const ProductionOverview = ({
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {generators.map(({ building_name, process, total_count, active_count, idle_count }) => {
+                  {generators.map(({ buildingName, process, totalCount, activeCount, idleCount }) => {
                     const isResourceProducer = process.outputs.length > 0;
                     const isResourceConsumer = process.inputs.length > 0;
-                    const isPowerGenerator = process.power_generation > 0;
-                    const isPowerConsumer = process.power_consumption > 0;
-                    const utilization = total_count > 0 ? (active_count / total_count) * 100 : 0;
-                    const efficiency = process.efficiency_percent;
+                    const isPowerGenerator = process.powerGeneration > 0;
+                    const isPowerConsumer = process.powerConsumption > 0;
+                    const utilization = totalCount > 0 ? (activeCount / totalCount) * 100 : 0;
+                    const efficiency = process.efficiencyPercent;
                     return (
-                      <Item variant="outline" key={`${building_name}-${process.process_name}`} className="items-start">
+                      <Item variant="outline" key={`${buildingName}-${process.processName}`} className="items-start">
                         <ItemContent>
                           <ItemTitle className="flex flex-col items-start">
-                            <span>{building_name} &times; {total_count}</span>
-                            <span className="text-xs text-muted-foreground">{process.process_name}</span>
+                            <span>{buildingName} &times; {totalCount}</span>
+                            <span className="text-xs text-muted-foreground">{process.processName}</span>
                           </ItemTitle>
                           <ProgressBar
                             mode={(isResourceProducer || isResourceConsumer) ? "progress" : "continuous"}
-                            value={(isResourceProducer || isResourceConsumer) ? process.progress_percent : 100}
-                            duration={100*process.duration/process.efficiency_percent}
-                            active={active_count > 0}
+                            value={(isResourceProducer || isResourceConsumer) ? process.progressPercent : 100}
+                            duration={100*process.duration/process.efficiencyPercent}
+                            active={activeCount > 0}
                           />
                           <ItemDescription className="flex flex-col">
                             {isResourceConsumer && (
                               <span className="flex items-center gap-1">
                                 <Consumed size={16} className="inline-block" />
-                                {process.inputs.map((input) => `-${input.amount * total_count} ${input.resource}`).join(", ")}
+                                {process.inputs.map((input) => `-${input.amount * totalCount} ${input.resource}`).join(", ")}
                               </span>
                             )}
                             {isResourceProducer && (
                               <span className="flex items-center gap-1">
                                 <Produced size={16} className="inline-block" />
-                                {process.outputs.map((output) => `+${output.amount * total_count} ${output.resource}`).join(", ")}
+                                {process.outputs.map((output) => `+${output.amount * totalCount} ${output.resource}`).join(", ")}
                               </span>
                             )}
                             {(isResourceProducer || isResourceConsumer) && (
@@ -292,13 +292,13 @@ export const ProductionOverview = ({
                             {isPowerGenerator && (
                               <span className="flex items-center gap-1">
                                 <Power size={16} className="inline-block" />
-                                +{process.power_generation * total_count} MW
+                                +{process.powerGeneration * totalCount} MW
                               </span>
                             )}
                             {isPowerConsumer && (
                               <span className="flex items-center gap-1">
                                 <Power size={16} className="inline-block" />
-                                -{process.power_consumption * total_count} MW
+                                -{process.powerConsumption * totalCount} MW
                               </span>
                             )}
                             <span className="flex items-center gap-1">
@@ -315,21 +315,21 @@ export const ProductionOverview = ({
                               )}
                             </span>
                             <span className="flex items-center gap-1">
-                              <Active size={16} /> {active_count}/{total_count} Active
-                              <Idle size={16} /> {idle_count}/{total_count} Idle
+                              <Active size={16} /> {activeCount}/{totalCount} Active
+                              <Idle size={16} /> {idleCount}/{totalCount} Idle
                             </span>
                           </ItemDescription>
                         </ItemContent>
                         <ItemActions className="gap-1">
                           <Button
                             variant="outline"
-                            onClick={() => game.addBuilding(building_name, process.process_name, 1)}
+                            onClick={() => game.addBuilding(buildingName, process.processName, 1)}
                           >
                             <Plus />
                           </Button>
                           <Button
                             variant="destructive"
-                            onClick={() => game.addBuilding(building_name, process.process_name, -1)}
+                            onClick={() => game.addBuilding(buildingName, process.processName, -1)}
                           >
                             <Minus />
                           </Button>
@@ -365,7 +365,7 @@ export const ProductionOverview = ({
                                 <DropdownMenuLabel>
                                   {building.name} Processes
                                 </DropdownMenuLabel>
-                                {building.available_processes.map(
+                                {building.availableProcesses.map(
                                   (process) => (
                                     <DropdownMenuItem
                                       key={process}
@@ -412,37 +412,37 @@ export const ProductionOverview = ({
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {producers.map(({ building_name, process, total_count, active_count, idle_count }) => {
+                  {producers.map(({ buildingName, process, totalCount, activeCount, idleCount }) => {
                     const isResourceProducer = process.outputs.length > 0;
                     const isResourceConsumer = process.inputs.length > 0;
-                    const isPowerGenerator = process.power_generation > 0;
-                    const isPowerConsumer = process.power_consumption > 0;
-                    const utilization = total_count > 0 ? (active_count / total_count) * 100 : 0;
-                    const efficiency = process.efficiency_percent;
+                    const isPowerGenerator = process.powerGeneration > 0;
+                    const isPowerConsumer = process.powerConsumption > 0;
+                    const utilization = totalCount > 0 ? (activeCount / totalCount) * 100 : 0;
+                    const efficiency = process.efficiencyPercent;
                     return (
-                      <Item variant="outline" key={`${building_name}-${process.process_name}`} className="items-start">
+                      <Item variant="outline" key={`${buildingName}-${process.processName}`} className="items-start">
                         <ItemContent>
                           <ItemTitle className="flex flex-col items-start">
-                            <span>{building_name} &times; {total_count}</span>
-                            <span className="text-xs text-muted-foreground">{process.process_name}</span>
+                            <span>{buildingName} &times; {totalCount}</span>
+                            <span className="text-xs text-muted-foreground">{process.processName}</span>
                           </ItemTitle>
                           <ProgressBar
                             mode={(isResourceProducer || isResourceConsumer) ? "progress" : "continuous"}
-                            value={(isResourceProducer || isResourceConsumer) ? process.progress_percent : 100}
-                            duration={100*process.duration/process.efficiency_percent}
-                            active={active_count > 0}
+                            value={(isResourceProducer || isResourceConsumer) ? process.progressPercent : 100}
+                            duration={100*process.duration/process.efficiencyPercent}
+                            active={activeCount > 0}
                           />
                           <ItemDescription className="flex flex-col">
                             {isResourceConsumer && (
                               <span className="flex items-center gap-1">
                                 <Consumed size={16} className="inline-block" />
-                                {process.inputs.map((input) => `-${input.amount * total_count} ${input.resource}`).join(", ")}
+                                {process.inputs.map((input) => `-${input.amount * totalCount} ${input.resource}`).join(", ")}
                               </span>
                             )}
                             {isResourceProducer && (
                               <span className="flex items-center gap-1">
                                 <Produced size={16} className="inline-block" />
-                                {process.outputs.map((output) => `+${output.amount * total_count} ${output.resource}`).join(", ")}
+                                {process.outputs.map((output) => `+${output.amount * totalCount} ${output.resource}`).join(", ")}
                               </span>
                             )}
                             {(isResourceProducer || isResourceConsumer) && (
@@ -453,13 +453,13 @@ export const ProductionOverview = ({
                             {isPowerGenerator && (
                               <span className="flex items-center gap-1">
                                 <Power size={16} className="inline-block" />
-                                +{process.power_generation * total_count} MW
+                                +{process.powerGeneration * totalCount} MW
                               </span>
                             )}
                             {isPowerConsumer && (
                               <span className="flex items-center gap-1">
                                 <Power size={16} className="inline-block" />
-                                -{process.power_consumption * total_count} MW
+                                -{process.powerConsumption * totalCount} MW
                               </span>
                             )}
                             <span className="flex items-center gap-1">
@@ -476,21 +476,21 @@ export const ProductionOverview = ({
                               )}
                             </span>
                             <span className="flex items-center gap-1">
-                              <Active size={16} /> {active_count}/{total_count} Active
-                              <Idle size={16} /> {idle_count}/{total_count} Idle
+                              <Active size={16} /> {activeCount}/{totalCount} Active
+                              <Idle size={16} /> {idleCount}/{totalCount} Idle
                             </span>
                           </ItemDescription>
                         </ItemContent>
                         <ItemActions className="gap-1">
                           <Button
                             variant="outline"
-                            onClick={() => game.addBuilding(building_name, process.process_name, 1)}
+                            onClick={() => game.addBuilding(buildingName, process.processName, 1)}
                           >
                             <Plus />
                           </Button>
                           <Button
                             variant="destructive"
-                            onClick={() => game.addBuilding(building_name, process.process_name, -1)}
+                            onClick={() => game.addBuilding(buildingName, process.processName, -1)}
                           >
                             <Minus />
                           </Button>
