@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet, VecDeque, hash_map::Entry};
+use std::collections::{HashMap, VecDeque, hash_map::Entry};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
@@ -100,126 +100,6 @@ pub struct JSONGameData {
     buildings: Vec<Building>,
 }
 
-fn validate_data(data: &JSONGameData) -> Result<(), String> {
-    let resource_names: HashSet<&str> = data
-        .resources
-        .iter()
-        .map(|resource| resource.name.as_str())
-        .collect();
-    let process_names: HashSet<&str> = data
-        .processes
-        .iter()
-        .map(|process| process.name.as_str())
-        .collect();
-    let building_names: HashSet<&str> = data
-        .buildings
-        .iter()
-        .map(|building| building.name.as_str())
-        .collect();
-
-    if resource_names.len() != data.resources.len() {
-        return Err("Duplicate resource names found in catalog".to_string());
-    }
-    if process_names.len() != data.processes.len() {
-        return Err("Duplicate process names found in catalog".to_string());
-    }
-    if building_names.len() != data.buildings.len() {
-        return Err("Duplicate building names found in catalog".to_string());
-    }
-
-    for resource in &data.resources {
-        if resource.name.trim().is_empty() {
-            return Err("Resource name cannot be empty".to_string());
-        }
-    }
-
-    for process in &data.processes {
-        if process.name.trim().is_empty() {
-            return Err("Process name cannot be empty".to_string());
-        }
-        if process.duration <= 0.0 {
-            return Err(format!(
-                "Process '{}' must have a positive duration",
-                process.name
-            ));
-        }
-        if !process.power_consumption.is_finite() || process.power_consumption < 0.0 {
-            return Err(format!(
-                "Process '{}' must have a finite, non-negative power_consumption",
-                process.name
-            ));
-        }
-        if !process.power_generation.is_finite() || process.power_generation < 0.0 {
-            return Err(format!(
-                "Process '{}' must have a finite, non-negative power_generation",
-                process.name
-            ));
-        }
-
-        for input in &process.inputs {
-            if input.amount <= 0.0 {
-                return Err(format!(
-                    "Process '{}' has a non-positive input amount for resource '{}'",
-                    process.name, input.resource
-                ));
-            }
-            if !resource_names.contains(input.resource.as_str()) {
-                return Err(format!(
-                    "Process '{}' references unknown input resource '{}'",
-                    process.name, input.resource
-                ));
-            }
-        }
-
-        for output in &process.outputs {
-            if output.amount <= 0.0 {
-                return Err(format!(
-                    "Process '{}' has a non-positive output amount for resource '{}'",
-                    process.name, output.resource
-                ));
-            }
-            if !resource_names.contains(output.resource.as_str()) {
-                return Err(format!(
-                    "Process '{}' references unknown output resource '{}'",
-                    process.name, output.resource
-                ));
-            }
-        }
-    }
-
-    for building in &data.buildings {
-        if building.name.trim().is_empty() {
-            return Err("Building name cannot be empty".to_string());
-        }
-
-        for process_name in &building.available_processes {
-            if !process_names.contains(process_name.as_str()) {
-                return Err(format!(
-                    "Building '{}' references unknown process '{}'",
-                    building.name, process_name
-                ));
-            }
-        }
-
-        for cost in &building.cost {
-            if cost.amount <= 0.0 {
-                return Err(format!(
-                    "Building '{}' has a non-positive cost amount for resource '{}'",
-                    building.name, cost.resource
-                ));
-            }
-            if !resource_names.contains(cost.resource.as_str()) {
-                return Err(format!(
-                    "Building '{}' references unknown cost resource '{}'",
-                    building.name, cost.resource
-                ));
-            }
-        }
-    }
-
-    Ok(())
-}
-
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
@@ -318,9 +198,6 @@ impl Game {
 impl Game {
     #[wasm_bindgen(constructor)]
     pub fn new(data: JSONGameData, sample_interval: f64, sample_length: usize) -> Result<Game, JsValue> {
-        validate_data(&data)
-            .map_err(|err| JsValue::from_str(&format!("Game data validation failed: {err}")))?;
-
         let resources = data
             .resources
             .into_iter()
