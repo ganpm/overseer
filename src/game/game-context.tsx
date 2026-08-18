@@ -1,7 +1,19 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import init, { Game } from "pkg/overseer";
-import type { BuildingGroupInstance, InventoryEntry, ProductionChartSeries } from "pkg/overseer";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import init, {
+  Game,
+  type BuildingGroupInstance,
+  type InventoryEntry,
+  type ProductionChartSeries,
+} from "pkg/overseer";
 import gameData from "@/game/game-data.json";
+import { Spinner } from "@/components/ui/spinner";
 
 // Simulation tick interval in milliseconds
 const TICK_MS = 16.667; // 60 FPS
@@ -10,6 +22,7 @@ const MAX_CATCH_UP_TICKS = 5;
 // 
 const SAMPLE_INTERVAL = 1.0;
 const SAMPLE_LENGTH = 30;
+const LOAD_FADE_MS = 400;
 
 export interface GameSnapshot {
   buildings: BuildingGroupInstance[];
@@ -34,6 +47,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
   const [chartData, setChartData] = useState<ProductionChartSeries[]>([]);
   const [isReady, setIsReady] = useState(false);
+  const [isContentVisible, setIsContentVisible] = useState(false);
+  const [showLoader, setShowLoader] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,13 +109,53 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [isReady]);
 
-  if (!isReady || !snapshot || !gameRef.current) {
-    return null;
+  useEffect(() => {
+    if (!isReady) return;
+
+    const frameId = window.requestAnimationFrame(() => {
+      setIsContentVisible(true);
+    });
+
+    const hideLoaderTimeoutId = window.setTimeout(() => {
+      setShowLoader(false);
+    }, LOAD_FADE_MS);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(hideLoaderTimeoutId);
+    };
+  }, [isReady]);
+
+  if (!snapshot || !gameRef.current) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+        <div className="flex items-center gap-2 text-muted-foreground" aria-live="polite" aria-busy="true">
+          <Spinner className="size-6" />
+          <span>Loading...</span>
+        </div>
+      </div>
+    );
   }
 
   return (
     <GameContext.Provider value={{ game: gameRef.current, snapshot, chartData }}>
-      {children}
+      <div
+        className={isContentVisible ? "opacity-100" : "opacity-0"}
+        style={{ transition: `opacity ${LOAD_FADE_MS}ms ease` }}
+      >
+        {children}
+      </div>
+      {showLoader && (
+        <div
+          className={isContentVisible ? "fixed inset-0 z-50 flex items-center justify-center bg-background opacity-0" : "fixed inset-0 z-50 flex items-center justify-center bg-background opacity-100"}
+          style={{ transition: `opacity ${LOAD_FADE_MS}ms ease` }}
+        >
+          <div className="flex items-center gap-2 text-muted-foreground" aria-live="polite" aria-busy="true">
+            <Spinner className="size-6" />
+            <span>Loading...</span>
+          </div>
+        </div>
+      )}
     </GameContext.Provider>
   );
 };
