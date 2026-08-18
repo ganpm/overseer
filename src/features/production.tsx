@@ -259,7 +259,7 @@ export const ProductionOverview = ({
                     const utilization = total_count > 0 ? (active_count / total_count) * 100 : 0;
                     const efficiency = process.efficiency_percent;
                     return (
-                      <Item variant="outline" key={`${building_name}-${process.process_name}`}>
+                      <Item variant="outline" key={`${building_name}-${process.process_name}`} className="items-start">
                         <ItemContent>
                           <ItemTitle className="flex flex-col items-start">
                             <span>{building_name} &times; {total_count}</span>
@@ -320,7 +320,7 @@ export const ProductionOverview = ({
                             </span>
                           </ItemDescription>
                         </ItemContent>
-                        <ItemActions>
+                        <ItemActions className="gap-1">
                           <Button
                             variant="outline"
                             onClick={() => game.addBuilding(building_name, process.process_name, 1)}
@@ -420,7 +420,7 @@ export const ProductionOverview = ({
                     const utilization = total_count > 0 ? (active_count / total_count) * 100 : 0;
                     const efficiency = process.efficiency_percent;
                     return (
-                      <Item variant="outline" key={`${building_name}-${process.process_name}`}>
+                      <Item variant="outline" key={`${building_name}-${process.process_name}`} className="items-start">
                         <ItemContent>
                           <ItemTitle className="flex flex-col items-start">
                             <span>{building_name} &times; {total_count}</span>
@@ -481,7 +481,7 @@ export const ProductionOverview = ({
                             </span>
                           </ItemDescription>
                         </ItemContent>
-                        <ItemActions>
+                        <ItemActions className="gap-1">
                           <Button
                             variant="outline"
                             onClick={() => game.addBuilding(building_name, process.process_name, 1)}
