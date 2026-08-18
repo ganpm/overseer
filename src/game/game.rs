@@ -56,7 +56,6 @@ pub struct ProcessInstance {
     outputs: Vec<ResourceAmount>,
     duration: f64,
     remaining_seconds: f64,
-    progress_percent: f64,
     efficiency_percent: f64,
 }
 
@@ -345,7 +344,6 @@ impl Game {
                             outputs: process.outputs.clone(),
                             duration: process.duration,
                             remaining_seconds: process.duration,
-                            progress_percent: 0.0,
                             efficiency_percent: 100.0,
                         },
                         total_count: buildable,
@@ -548,7 +546,6 @@ impl Game {
                 group.idle_count = group.idle_count.saturating_add(group.active_count);
                 group.active_count = 0;
                 group.process.remaining_seconds = group.process.duration;
-                group.process.progress_percent = 0.0;
                 return true;
             }
             return false;
@@ -569,8 +566,6 @@ impl Game {
 
             if group.process.remaining_seconds > time_left {
                 group.process.remaining_seconds -= time_left;
-                group.process.progress_percent =
-                    100.0 * (group.process.duration - group.process.remaining_seconds) / group.process.duration;
                 return true;
             }
 
@@ -594,7 +589,6 @@ impl Game {
             group.active_count = starting;
             group.idle_count = candidates.saturating_sub(starting);
             group.process.remaining_seconds = group.process.duration;
-            group.process.progress_percent = 0.0;
             return true;
         } else if group.idle_count > 0 && is_powered {
             // Nothing running - idle buildings try to start a new cycle as soon as resources and power allow
@@ -606,7 +600,6 @@ impl Game {
                 group.active_count = starting;
                 group.idle_count = group.idle_count.saturating_sub(starting);
                 group.process.remaining_seconds = group.process.duration;
-                group.process.progress_percent = 0.0;
                 return true;
             } else {
                 return false;

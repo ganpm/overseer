@@ -266,8 +266,8 @@ export const ProductionOverview = ({
                             <span className="text-xs text-muted-foreground">{process.processName}</span>
                           </ItemTitle>
                           <ProgressBar
-                            mode={(isResourceProducer || isResourceConsumer) ? "progress" : "continuous"}
-                            value={(isResourceProducer || isResourceConsumer) ? process.progressPercent : 100}
+                            mode={(process.duration > 0) ? "progress" : "continuous"}
+                            value={(process.duration > 0) ? 100 * (process.duration - process.remainingSeconds)/process.duration : 100}
                             duration={100*process.duration/process.efficiencyPercent}
                             active={activeCount > 0}
                           />
@@ -427,8 +427,8 @@ export const ProductionOverview = ({
                             <span className="text-xs text-muted-foreground">{process.processName}</span>
                           </ItemTitle>
                           <ProgressBar
-                            mode={(isResourceProducer || isResourceConsumer) ? "progress" : "continuous"}
-                            value={(isResourceProducer || isResourceConsumer) ? process.progressPercent : 100}
+                            mode={(process.duration > 0) ? "progress" : "continuous"}
+                            value={(process.duration > 0) ? 100 * (process.duration - process.remainingSeconds)/process.duration : 100}
                             duration={100*process.duration/process.efficiencyPercent}
                             active={activeCount > 0}
                           />
