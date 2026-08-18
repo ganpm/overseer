@@ -38,6 +38,31 @@ export interface GameContextValue {
 
 const GameContext = createContext<GameContextValue | null>(null);
 
+const getErrorMessage = (error: unknown): string => {
+  if (typeof error === "object" && error !== null && "issues" in error) {
+    const issues = (error as { issues?: { message?: string; path?: (string | number)[] }[] }).issues;
+    if (Array.isArray(issues) && issues.length > 0) {
+      return issues
+        .map((issue) => {
+          const path = Array.isArray(issue.path) && issue.path.length > 0
+            ? issue.path
+                .map((segment) => (typeof segment === "number" ? `[${segment}]` : `.${segment}`))
+                .join("")
+                .replace(/^\./, "")
+            : "root";
+          return `${path}: ${issue.message ?? "Invalid value"}`;
+        })
+        .join("\n");
+    }
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Unknown error";
+};
+
 const readSnapshot = (game: Game): GameSnapshot => ({
   buildings: game.buildings,
   inventory: game.inventory,
@@ -48,6 +73,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
   const [chartData, setChartData] = useState<ProductionChartSeries[]>([]);
   const [isReady, setIsReady] = useState(false);
+  const [initErrorMessage, setInitErrorMessage] = useState<string | null>(null);
   const [isContentVisible, setIsContentVisible] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
 
@@ -56,11 +82,19 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
     void init().then(() => {
       if (cancelled) return;
-      const validatedGameData = validateGameData(gameData);
-      const game = new Game(validatedGameData, SAMPLE_INTERVAL, SAMPLE_LENGTH);
-      gameRef.current = game;
-      setSnapshot(readSnapshot(game));
-      setIsReady(true);
+      try {
+        const validatedGameData = validateGameData(gameData);
+        const game = new Game(validatedGameData, SAMPLE_INTERVAL, SAMPLE_LENGTH);
+        gameRef.current = game;
+        setSnapshot(readSnapshot(game));
+        setIsReady(true);
+      } catch (error) {
+        if (cancelled) return;
+        setInitErrorMessage(getErrorMessage(error));
+      }
+    }).catch((error: unknown) => {
+      if (cancelled) return;
+      setInitErrorMessage(getErrorMessage(error));
     });
 
     return () => {
@@ -127,6 +161,17 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       window.clearTimeout(hideLoaderTimeoutId);
     };
   }, [isReady]);
+
+  if (initErrorMessage) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background p-4">
+        <div className="max-w-2xl rounded-md border border-destructive/20 bg-destructive/5 p-4 text-destructive">
+          <h2 className="font-heading text-base font-semibold">Game data validation failed</h2>
+          <p className="mt-2 whitespace-pre-line text-sm">{initErrorMessage}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!snapshot || !gameRef.current) {
     return (
