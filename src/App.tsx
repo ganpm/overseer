@@ -6,8 +6,8 @@ import {
   TabsContent,
 } from "@/components/ui/tabs";
 
-import { ProductionOverview } from "@/features/production.tsx";
-import { AnalyticsOverview } from "@/features/analytics.tsx";
+import { ProductionOverview } from "@/features/production/production.tsx";
+import { AnalyticsOverview } from "@/features/analytics/analytics.tsx";
 
 
 export const App = () => {
