@@ -17,27 +17,27 @@
 	],
 	"processes": [
 		{
-			"name": "Photovoltaic Energy Production",
-			"duration": 1.0,
+			"name": "Solar Energy Production",
+			"duration": 0.0,
 			"powerConsumption": 0.0,
 			"powerGeneration": 4.0,
-			"inputs": [],
+			"inputs": [{ "amount": 0.0, "resource": "Sunlight" }],
 			"outputs": []
 		},
 		{
 			"name": "Wind Energy Production",
-			"duration": 1.0,
+			"duration": 0.0,
 			"powerConsumption": 0.0,
 			"powerGeneration": 8.0,
-			"inputs": [],
+			"inputs": [{ "amount": 0.0, "resource": "Wind" }],
 			"outputs": []
 		},
 		{
 			"name": "Hydroelectric Energy Production",
-			"duration": 1.0,
+			"duration": 0.0,
 			"powerConsumption": 0.0,
 			"powerGeneration": 8.0,
-			"inputs": [],
+			"inputs": [{ "amount": 0.0, "resource": "Water" }],
 			"outputs": []
 		},
 		{
@@ -53,7 +53,7 @@
 			"duration": 1.0,
 			"powerConsumption": 1.0,
 			"powerGeneration": 0.0,
-			"inputs": [],
+			"inputs": [{ "amount": 0.0, "resource": "Iron Ore Mine" }],
 			"outputs": [{ "amount": 1.0, "resource": "Iron Ore" }]
 		},
 		{
@@ -61,7 +61,7 @@
 			"duration": 1.0,
 			"powerConsumption": 1.0,
 			"powerGeneration": 0.0,
-			"inputs": [],
+			"inputs": [{ "amount": 0.0, "resource": "Copper Ore Mine" }],
 			"outputs": [{ "amount": 1.0, "resource": "Copper Ore" }]
 		},
 		{
@@ -69,7 +69,7 @@
 			"duration": 1.0,
 			"powerConsumption": 1.0,
 			"powerGeneration": 0.0,
-			"inputs": [],
+			"inputs": [{ "amount": 0.0, "resource": "Stone Quarry" }],
 			"outputs": [{ "amount": 1.0, "resource": "Stone" }]
 		},
 		{
@@ -77,7 +77,7 @@
 			"duration": 1.0,
 			"powerConsumption": 1.0,
 			"powerGeneration": 0.0,
-			"inputs": [],
+			"inputs": [{ "amount": 0.0, "resource": "Silica Mine" }],
 			"outputs": [{ "amount": 1.0, "resource": "Silica" }]
 		},
 		{
@@ -85,7 +85,7 @@
 			"duration": 1.0,
 			"powerConsumption": 1.0,
 			"powerGeneration": 0.0,
-			"inputs": [],
+			"inputs": [{ "amount": 0.0, "resource": "Coal Mine" }],
 			"outputs": [{ "amount": 1.0, "resource": "Coal" }]
 		},
 		{
@@ -93,7 +93,7 @@
 			"duration": 1.0,
 			"powerConsumption": 1.0,
 			"powerGeneration": 0.0,
-			"inputs": [],
+			"inputs": [{ "amount": 0.0, "resource": "Water Source" }],
 			"outputs": [{ "amount": 1.0, "resource": "Water" }]
 		},
 		{
@@ -101,7 +101,7 @@
 			"duration": 1.0,
 			"powerConsumption": 1.0,
 			"powerGeneration": 0.0,
-			"inputs": [],
+			"inputs": [{ "amount": 0.0, "resource": "Crude Oil Well" }],
 			"outputs": [{ "amount": 1.0, "resource": "Crude Oil" }]
 		},
 		{
@@ -179,7 +179,7 @@
 	"buildings": [
 		{
 			"name": "Solar Panel",
-			"availableProcesses": ["Photovoltaic Energy Production"],
+			"availableProcesses": ["Solar Energy Production"],
 			"cost": []
 		},
 		{

@@ -14,7 +14,7 @@ const ResourceSchema = z.object({
 type ResourceSchemaType = z.output<typeof ResourceSchema>;
 
 const ResourceAmountSchema = z.object({
-  amount: z.number().positive(),
+  amount: z.number().nonnegative(),
   resource: z.string().trim().min(1),
 });
 
@@ -22,7 +22,7 @@ type ResourceAmountSchemaType = z.output<typeof ResourceAmountSchema>;
 
 const ProcessSchema = z.object({
   name: z.string().trim().min(1), 
-  duration: z.number().positive(),
+  duration: z.number().nonnegative(),
   powerConsumption: z.number().nonnegative(),
   powerGeneration: z.number().nonnegative(),
   inputs: z.array(ResourceAmountSchema),

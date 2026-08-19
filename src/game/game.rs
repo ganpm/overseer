@@ -504,6 +504,9 @@ impl Game {
     ) {
         for input in inputs {
             let consumed_amount = input.amount * count as f64;
+            if consumed_amount <= 0.0 {
+                continue;
+            }
             *inventory.entry(input.resource.clone()).or_insert(0.0) -= consumed_amount;
             flow
                 .entry(input.resource.clone())
