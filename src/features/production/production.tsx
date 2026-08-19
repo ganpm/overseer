@@ -19,10 +19,8 @@ import {
   Item,
   ItemContent,
   ItemTitle,
-  ItemDescription,
   ItemActions,
 } from "@/components/ui/item";
-import { ProgressBar } from "@/components/progress-bar";
 import {
   Accordion,
   AccordionContent,
@@ -41,22 +39,12 @@ import {
   selectSortFn,
 } from "@/components/sort-controller";
 import {
-  Plus,
-  Minus,
-  Zap as Power,
-  PackageMinus as Consumed,
-  PackagePlus as Produced,
-  Timer as CycleTime,
-  Activity,
-  Gauge as Efficiency,
-  ShieldCheck as Active,
-  ShieldMinus as Idle,
-  TriangleAlert as Warning,
   Search,
   Hammer as Build,
 } from "lucide-react";
 import { filterAndSort } from "@/lib/filter-sort";
 import type { BuildingGroupInstance, InventoryEntry } from "pkg/overseer";
+import { BuildingCard } from "@/features/production/building-card";
 
 export interface ProductionOverviewProps {
   game: Game,
@@ -251,92 +239,19 @@ export const ProductionOverview = ({
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {generators.map(({ buildingName, process, totalCount, activeCount, idleCount }) => {
-                    const isResourceProducer = process.outputs.length > 0;
-                    const isResourceConsumer = process.inputs.length > 0;
-                    const isPowerGenerator = process.powerGeneration > 0;
-                    const isPowerConsumer = process.powerConsumption > 0;
-                    const utilization = totalCount > 0 ? (activeCount / totalCount) * 100 : 0;
-                    const efficiency = process.efficiencyPercent;
-                    return (
-                      <Item variant="outline" key={`${buildingName}-${process.processName}`} className="items-start">
-                        <ItemContent>
-                          <ItemTitle className="flex flex-col items-start">
-                            <span>{buildingName} &times; {totalCount}</span>
-                            <span className="text-xs text-muted-foreground">{process.processName}</span>
-                          </ItemTitle>
-                          <ProgressBar
-                            mode={(process.duration > 0) ? "progress" : "continuous"}
-                            value={(process.duration > 0) ? 100 * (process.duration - process.remainingSeconds)/process.duration : 100}
-                            duration={100*process.duration/process.efficiencyPercent}
-                            active={activeCount > 0}
-                          />
-                          <ItemDescription className="flex flex-col">
-                            {isResourceConsumer && (
-                              <span className="flex items-center gap-1">
-                                <Consumed size={16} className="inline-block" />
-                                {process.inputs.map((input) => `-${input.amount * totalCount} ${input.resource}`).join(", ")}
-                              </span>
-                            )}
-                            {isResourceProducer && (
-                              <span className="flex items-center gap-1">
-                                <Produced size={16} className="inline-block" />
-                                {process.outputs.map((output) => `+${output.amount * totalCount} ${output.resource}`).join(", ")}
-                              </span>
-                            )}
-                            {(isResourceProducer || isResourceConsumer) && (
-                              <span className="flex items-center gap-1">
-                                <CycleTime size={16} className="inline-block" /> {process.duration}s
-                              </span>
-                            )}
-                            {isPowerGenerator && (
-                              <span className="flex items-center gap-1">
-                                <Power size={16} className="inline-block" />
-                                +{process.powerGeneration * totalCount} MW
-                              </span>
-                            )}
-                            {isPowerConsumer && (
-                              <span className="flex items-center gap-1">
-                                <Power size={16} className="inline-block" />
-                                -{process.powerConsumption * totalCount} MW
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              <Efficiency size={16} />
-                              {efficiency.toFixed(0)}% Efficiency
-                              {efficiency < 100 && (
-                                <Warning size={16} className="text-warning" />
-                              )}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Activity size={16} />{utilization.toFixed(0)}% Utilization
-                              {utilization < 100 && (
-                                <Warning size={16} className="text-warning" />
-                              )}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Active size={16} /> {activeCount}/{totalCount} Active
-                              <Idle size={16} /> {idleCount}/{totalCount} Idle
-                            </span>
-                          </ItemDescription>
-                        </ItemContent>
-                        <ItemActions className="gap-1">
-                          <Button
-                            variant="outline"
-                            onClick={() => game.addBuilding(buildingName, process.processName, 1)}
-                          >
-                            <Plus />
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            onClick={() => game.addBuilding(buildingName, process.processName, -1)}
-                          >
-                            <Minus />
-                          </Button>
-                        </ItemActions>
-                      </Item>
-                    );
-                  })}
+                  {generators.map(
+                    ({ buildingName, process, totalCount, activeCount, idleCount }) => (
+                      <BuildingCard
+                        process={process}
+                        buildingName={buildingName}
+                        totalCount={totalCount}
+                        activeCount={activeCount}
+                        idleCount={idleCount}
+                        increaseCount={() => game.addBuilding(buildingName, process.processName, 1)}
+                        decreaseCount={() => game.addBuilding(buildingName, process.processName, -1)}
+                      />
+                    )
+                  )}
                 </div>
               )}
             </div>
@@ -412,92 +327,19 @@ export const ProductionOverview = ({
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {producers.map(({ buildingName, process, totalCount, activeCount, idleCount }) => {
-                    const isResourceProducer = process.outputs.length > 0;
-                    const isResourceConsumer = process.inputs.length > 0;
-                    const isPowerGenerator = process.powerGeneration > 0;
-                    const isPowerConsumer = process.powerConsumption > 0;
-                    const utilization = totalCount > 0 ? (activeCount / totalCount) * 100 : 0;
-                    const efficiency = process.efficiencyPercent;
-                    return (
-                      <Item variant="outline" key={`${buildingName}-${process.processName}`} className="items-start">
-                        <ItemContent>
-                          <ItemTitle className="flex flex-col items-start">
-                            <span>{buildingName} &times; {totalCount}</span>
-                            <span className="text-xs text-muted-foreground">{process.processName}</span>
-                          </ItemTitle>
-                          <ProgressBar
-                            mode={(process.duration > 0) ? "progress" : "continuous"}
-                            value={(process.duration > 0) ? 100 * (process.duration - process.remainingSeconds)/process.duration : 100}
-                            duration={100*process.duration/process.efficiencyPercent}
-                            active={activeCount > 0}
-                          />
-                          <ItemDescription className="flex flex-col">
-                            {isResourceConsumer && (
-                              <span className="flex items-center gap-1">
-                                <Consumed size={16} className="inline-block" />
-                                {process.inputs.map((input) => `-${input.amount * totalCount} ${input.resource}`).join(", ")}
-                              </span>
-                            )}
-                            {isResourceProducer && (
-                              <span className="flex items-center gap-1">
-                                <Produced size={16} className="inline-block" />
-                                {process.outputs.map((output) => `+${output.amount * totalCount} ${output.resource}`).join(", ")}
-                              </span>
-                            )}
-                            {(isResourceProducer || isResourceConsumer) && (
-                              <span className="flex items-center gap-1">
-                                <CycleTime size={16} className="inline-block" /> {process.duration}s
-                              </span>
-                            )}
-                            {isPowerGenerator && (
-                              <span className="flex items-center gap-1">
-                                <Power size={16} className="inline-block" />
-                                +{process.powerGeneration * totalCount} MW
-                              </span>
-                            )}
-                            {isPowerConsumer && (
-                              <span className="flex items-center gap-1">
-                                <Power size={16} className="inline-block" />
-                                -{process.powerConsumption * totalCount} MW
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              <Efficiency size={16} />
-                              {efficiency.toFixed(0)}% Efficiency
-                              {efficiency < 100 && (
-                                <Warning size={16} />
-                              )}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Activity size={16} />{utilization.toFixed(0)}% Utilization
-                              {utilization < 100 && (
-                                <Warning size={16} className="text-warning" />
-                              )}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Active size={16} /> {activeCount}/{totalCount} Active
-                              <Idle size={16} /> {idleCount}/{totalCount} Idle
-                            </span>
-                          </ItemDescription>
-                        </ItemContent>
-                        <ItemActions className="gap-1">
-                          <Button
-                            variant="outline"
-                            onClick={() => game.addBuilding(buildingName, process.processName, 1)}
-                          >
-                            <Plus />
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            onClick={() => game.addBuilding(buildingName, process.processName, -1)}
-                          >
-                            <Minus />
-                          </Button>
-                        </ItemActions>
-                      </Item>
-                    );
-                  })}
+                  {producers.map(
+                    ({ buildingName, process, totalCount, activeCount, idleCount }) => (
+                      <BuildingCard
+                        process={process}
+                        buildingName={buildingName}
+                        totalCount={totalCount}
+                        activeCount={activeCount}
+                        idleCount={idleCount}
+                        increaseCount={() => game.addBuilding(buildingName, process.processName, 1)}
+                        decreaseCount={() => game.addBuilding(buildingName, process.processName, -1)}
+                      />
+                    )
+                  )}
                 </div>
               )}
             </div>
