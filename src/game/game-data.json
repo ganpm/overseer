@@ -179,27 +179,27 @@
 	"buildings": [
 		{
 			"name": "Solar Panel",
-			"availableProcesses": ["Solar Energy Production"],
+			"processOptions": ["Solar Energy Production"],
 			"cost": []
 		},
 		{
 			"name": "Wind Turbine",
-			"availableProcesses": ["Wind Energy Production"],
+			"processOptions": ["Wind Energy Production"],
 			"cost": []
 		},
 		{
 			"name": "Hydroelectric Dam",
-			"availableProcesses": ["Hydroelectric Energy Production"],
+			"processOptions": ["Hydroelectric Energy Production"],
 			"cost": []
 		},
 		{
 			"name": "Coal Power Plant",
-			"availableProcesses": ["Coal Energy Production"],
+			"processOptions": ["Coal Energy Production"],
 			"cost": [{ "amount": 10.0, "resource": "Coal" }]
 		},
 		{
 			"name": "Miner",
-			"availableProcesses": [
+			"processOptions": [
 				"Iron Ore Mining",
 				"Copper Ore Mining",
 				"Silica Mining",
@@ -210,12 +210,12 @@
 		},
 		{
 			"name": "Extractor",
-			"availableProcesses": ["Water Extraction", "Crude Oil Extraction"],
+			"processOptions": ["Water Extraction", "Crude Oil Extraction"],
 			"cost": [{ "amount": 10.0, "resource": "Stone" }]
 		},
 		{
 			"name": "Smelter",
-			"availableProcesses": [
+			"processOptions": [
 				"Iron Ore Smelting",
 				"Copper Ore Smelting",
 				"Silica Processing",
@@ -225,17 +225,17 @@
 		},
 		{
 			"name": "Oil Refinery",
-			"availableProcesses": ["Crude Oil Refinement"],
+			"processOptions": ["Crude Oil Refinement"],
 			"cost": [{ "amount": 10.0, "resource": "Stone" }]
 		},
 		{
 			"name": "Assembler",
-			"availableProcesses": ["Magnet Production", "Copper Wire Production"],
+			"processOptions": ["Magnet Production", "Copper Wire Production"],
 			"cost": [{ "amount": 10.0, "resource": "Stone" }]
 		},
 		{
 			"name": "Fabricator",
-			"availableProcesses": ["Electromagnet Production"],
+			"processOptions": ["Electromagnet Production"],
 			"cost": [{ "amount": 10.0, "resource": "Stone" }]
 		}
 	]

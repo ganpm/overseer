@@ -26,19 +26,19 @@ export function BuildingCard({
   decreaseCount,
   ...props
 }: BuildingCardProps) {
-  const { buildingName, totalCount, activeCount, idleCount, process } = buildingGroup;
+  const { name, totalCount, activeCount, idleCount, process } = buildingGroup;
   return (
     <div className="flex flex-col gap-3 border rounded-md p-3 w-full" {...props}>
       <div className="flex">
         <div className="flex flex-col flex-1 gap-1">
           <span>
-            <span className="font-medium">{buildingName} &times; {totalCount}</span>
+            <span className="font-medium">{name} &times; {totalCount}</span>
             <span className="text-xs text-muted-foreground ml-2">
               ({activeCount} active, {idleCount} idle)
             </span>
           </span>
           <span className="font-medium text-xs text-muted-foreground">
-            {process.processName}
+            {process.name}
           </span>
         </div>
         <div className="flex flex-row gap-1">
@@ -51,7 +51,7 @@ export function BuildingCard({
         </div>
       </div>
       <ProgressBar
-        value={(process.duration > 0) ? (1 - process.remainingSeconds/process.duration) * 100 : 100}
+        value={(process.duration > 0) ? process.elapsed/process.duration * 100 : 100}
         duration={process.duration}
         mode={(process.duration > 0) ? "progress" : "continuous"}
         active={activeCount > 0}

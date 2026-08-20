@@ -56,14 +56,14 @@ export const ProductionOverview = ({
   snapshot,
 }: ProductionOverviewProps) => {
   const availableGenerators = Object.values(game.data.buildings).filter((building) =>
-    building.availableProcesses.some((processName) => {
-      const process = game.data.processes[processName];
+    building.processOptions.some((name) => {
+      const process = game.data.processes[name];
       return process.powerGeneration > 0;
     })
   );
   const availableProducers = Object.values(game.data.buildings).filter((building) =>
-    building.availableProcesses.some((processName) => {
-      const process = game.data.processes[processName];
+    building.processOptions.some((name) => {
+      const process = game.data.processes[name];
       return process.powerConsumption > 0;
     })
   );
@@ -77,14 +77,14 @@ export const ProductionOverview = ({
   const [searchQueryInventory, setSearchQueryInventory] = useState("");
 
   const [sortStateGenerator, setSortStateGenerator] = useState<SortState<BuildingGroupInstance>>({
-    field: "buildingName",
+    field: "name",
     direction: "ascending",
   });
 
   const sortConfigGenerator: SortConfig<BuildingGroupInstance> = {
-    "buildingName": {
+    "name": {
       label: "Type",
-      sortFn: (a, b) => a.buildingName.localeCompare(b.buildingName),
+      sortFn: (a, b) => a.name.localeCompare(b.name),
     },
     "totalCount": {
       label: "Count",
@@ -92,19 +92,19 @@ export const ProductionOverview = ({
     },
     "process": {
       label: "Process",
-      sortFn: (a, b) => a.process.processName.localeCompare(b.process.processName),
+      sortFn: (a, b) => a.process.name.localeCompare(b.process.name),
     },
   };
 
   const [sortStateProducer, setSortStateProducer] = useState<SortState<BuildingGroupInstance>>({
-    field: "buildingName",
+    field: "name",
     direction: "ascending",
   });
 
   const sortConfigProducer: SortConfig<BuildingGroupInstance> = {
-    "buildingName": {
+    "name": {
       label: "Type",
-      sortFn: (a, b) => a.buildingName.localeCompare(b.buildingName),
+      sortFn: (a, b) => a.name.localeCompare(b.name),
     },
     "totalCount": {
       label: "Count",
@@ -112,7 +112,7 @@ export const ProductionOverview = ({
     },
     "process": {
       label: "Process",
-      sortFn: (a, b) => a.process.processName.localeCompare(b.process.processName),
+      sortFn: (a, b) => a.process.name.localeCompare(b.process.name),
     },
   };
 
@@ -135,8 +135,8 @@ export const ProductionOverview = ({
   const generators = filterAndSort(constructedGenerators, {
     query: searchQueryGenerator,
     filters: [
-      (building) => building.buildingName,
-      (building) => building.process.processName,
+      (building) => building.name,
+      (building) => building.process.name,
       (building) => building.process.inputs.map((input) => input.resource).join(" "),
       (building) => building.process.outputs.map((output) => output.resource).join(" "),
     ],
@@ -146,8 +146,8 @@ export const ProductionOverview = ({
   const producers = filterAndSort(constructedProducers, {
     query: searchQueryProducer,
     filters: [
-      (building) => building.buildingName,
-      (building) => building.process.processName,
+      (building) => building.name,
+      (building) => building.process.name,
       (building) => building.process.inputs.map((input) => input.resource).join(" "),
       (building) => building.process.outputs.map((output) => output.resource).join(" "),
     ],
@@ -192,13 +192,13 @@ export const ProductionOverview = ({
                                 <DropdownMenuLabel>
                                   {building.name} Processes
                                 </DropdownMenuLabel>
-                                {building.availableProcesses.map(
-                                  (process) => (
+                                {building.processOptions.map(
+                                  (processName) => (
                                     <DropdownMenuItem
-                                      key={process}
-                                      onClick={() => game.addBuilding(building.name, process, 1)}
+                                      key={processName}
+                                      onClick={() => game.addBuilding(building.name, processName, 1)}
                                     >
-                                      {process}
+                                      {processName}
                                     </DropdownMenuItem>
                                   )
                                 )}
@@ -242,10 +242,10 @@ export const ProductionOverview = ({
                   {generators.map(
                     (buildingGroup) => (
                       <BuildingCard
-                        key={`${buildingGroup.buildingName}-${buildingGroup.process.processName}`}
+                        key={`${buildingGroup.name}-${buildingGroup.process.name}`}
                         buildingGroup={buildingGroup}
-                        increaseCount={() => game.addBuilding(buildingGroup.buildingName, buildingGroup.process.processName, 1)}
-                        decreaseCount={() => game.addBuilding(buildingGroup.buildingName, buildingGroup.process.processName, -1)}
+                        increaseCount={() => game.addBuilding(buildingGroup.name, buildingGroup.process.name, 1)}
+                        decreaseCount={() => game.addBuilding(buildingGroup.name, buildingGroup.process.name, -1)}
                       />
                     )
                   )}
@@ -277,13 +277,13 @@ export const ProductionOverview = ({
                                 <DropdownMenuLabel>
                                   {building.name} Processes
                                 </DropdownMenuLabel>
-                                {building.availableProcesses.map(
-                                  (process) => (
+                                {building.processOptions.map(
+                                  (processName) => (
                                     <DropdownMenuItem
-                                      key={process}
-                                      onClick={() => game.addBuilding(building.name, process, 1)}
+                                      key={processName}
+                                      onClick={() => game.addBuilding(building.name, processName, 1)}
                                     >
-                                      {process}
+                                      {processName}
                                     </DropdownMenuItem>
                                   )
                                 )}
@@ -325,12 +325,12 @@ export const ProductionOverview = ({
               ) : (
                 <div className="space-y-2">
                   {producers.map(
-                    (buildingGroup) => (
+                    (group) => (
                       <BuildingCard
-                        key={`${buildingGroup.buildingName}-${buildingGroup.process.processName}`}
-                        buildingGroup={buildingGroup}
-                        increaseCount={() => game.addBuilding(buildingGroup.buildingName, buildingGroup.process.processName, 1)}
-                        decreaseCount={() => game.addBuilding(buildingGroup.buildingName, buildingGroup.process.processName, -1)}
+                        key={`${group.name}-${group.process.name}`}
+                        buildingGroup={group}
+                        increaseCount={() => game.addBuilding(group.name, group.process.name, 1)}
+                        decreaseCount={() => game.addBuilding(group.name, group.process.name, -1)}
                       />
                     )
                   )}

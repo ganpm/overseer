@@ -33,7 +33,7 @@ type ProcessSchemaType = z.output<typeof ProcessSchema>;
 
 const BuildingSchema = z.object({
   name: z.string().trim().min(1),
-  availableProcesses: z.array(z.string().trim().min(1)),
+  processOptions: z.array(z.string().trim().min(1)),
   cost: z.array(ResourceAmountSchema),
 });
 

@@ -39,24 +39,24 @@ pub struct Process {
 #[serde(rename_all = "camelCase")]
 pub struct Building {
     name: String,
-    available_processes: Vec<String>,
+    process_options: Vec<String>,
     cost: Vec<ResourceAmount>,
 }
 
 /// Represents an instance of a process running in a building.
-/// This struct is used to track the state of a process, including its progress and efficiency.
+/// This is used to track the state of a process, including its progress and efficiency.
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct ProcessInstance {
-    process_name: String,
+    name: String,
     power_consumption: f64,
     power_generation: f64,
     inputs: Vec<ResourceAmount>,
     outputs: Vec<ResourceAmount>,
     duration: f64,
-    remaining_seconds: f64,
-    efficiency_percent: f64,
+    elapsed: f64,
+    efficiency: f64,
 }
 
 /// Represents a group of buildings running the same process.
@@ -65,7 +65,7 @@ pub struct ProcessInstance {
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct BuildingGroupInstance {
-    building_name: String,
+    name: String,
     process: ProcessInstance,
     total_count: u32,
     /// The number of buildings running the process.
@@ -245,7 +245,7 @@ impl Game {
         self.buildings
             .iter()
             .map(|((bn, _), bgi)| BuildingGroupInstance {
-                building_name: bn.clone(),
+                name: bn.clone(),
                 process: bgi.process.clone(),
                 active_count: bgi.active_count,
                 idle_count: bgi.idle_count,
@@ -288,7 +288,7 @@ impl Game {
             )));
         };
 
-        if !building.available_processes.iter().any(|p| p == process_name)
+        if !building.process_options.iter().any(|p| p == process_name)
         {
             return Err(JsValue::from_str(&format!(
                 "Process '{}' is not available for building '{}'",
@@ -335,16 +335,16 @@ impl Game {
                     //}
 
                     entry.insert(BuildingGroupInstance {
-                        building_name: building_name.to_string(),
+                        name: building_name.to_string(),
                         process: ProcessInstance {
-                            process_name: process_name.to_string(),
+                            name: process_name.to_string(),
                             power_consumption: process.power_consumption,
                             power_generation: process.power_generation,
                             inputs: process.inputs.clone(),
                             outputs: process.outputs.clone(),
                             duration: process.duration,
-                            remaining_seconds: process.duration,
-                            efficiency_percent: 100.0,
+                            elapsed: 0.0,
+                            efficiency: 0.0,
                         },
                         total_count: buildable,
                         active_count: 0,
@@ -548,7 +548,7 @@ impl Game {
             if group.active_count > 0 {
                 group.idle_count = group.idle_count.saturating_add(group.active_count);
                 group.active_count = 0;
-                group.process.remaining_seconds = group.process.duration;
+                group.process.elapsed = 0.0;
                 return true;
             }
             return false;
@@ -556,23 +556,25 @@ impl Game {
 
         // Brownouts (has power but scarce) slows consumers down instead of stopping them
         // Non-consumers are unaffected
-        let speed_scale = if needs_power && is_powered {
+        let efficiency = if needs_power && is_powered {
             consumer_power_scale
         } else {
             1.0
         };
 
-        group.process.efficiency_percent = speed_scale * 100.0;
+        group.process.efficiency = efficiency;
 
         if group.active_count > 0 {
-            let time_left = delta_seconds * speed_scale;
+            let time_advanced = delta_seconds * efficiency;
+            let next_elapsed = group.process.elapsed + time_advanced;
 
-            if group.process.remaining_seconds > time_left {
-                group.process.remaining_seconds -= time_left;
+            // Cycle not complete: just increment elapsed cycle time and return.
+            if next_elapsed < group.process.duration {
+                group.process.elapsed = next_elapsed;
                 return true;
             }
 
-            // Cycle complete: produce outputs for building was
+            // Cycle complete: produce outputs for buildings that were
             // actively working this cycle.
             Self::produce_outputs(inventory, flow, &group.process.outputs, group.active_count);
 
@@ -591,7 +593,7 @@ impl Game {
             }
             group.active_count = starting;
             group.idle_count = candidates.saturating_sub(starting);
-            group.process.remaining_seconds = group.process.duration;
+            group.process.elapsed = 0.0;
             return true;
         } else if group.idle_count > 0 && is_powered {
             // Nothing running - idle buildings try to start a new cycle as soon as resources and power allow
@@ -602,7 +604,7 @@ impl Game {
 
                 group.active_count = starting;
                 group.idle_count = group.idle_count.saturating_sub(starting);
-                group.process.remaining_seconds = group.process.duration;
+                group.process.elapsed = 0.0;
                 return true;
             } else {
                 return false;
