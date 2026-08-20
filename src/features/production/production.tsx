@@ -240,15 +240,12 @@ export const ProductionOverview = ({
               ) : (
                 <div className="space-y-2">
                   {generators.map(
-                    ({ buildingName, process, totalCount, activeCount, idleCount }) => (
+                    (buildingGroup) => (
                       <BuildingCard
-                        process={process}
-                        buildingName={buildingName}
-                        totalCount={totalCount}
-                        activeCount={activeCount}
-                        idleCount={idleCount}
-                        increaseCount={() => game.addBuilding(buildingName, process.processName, 1)}
-                        decreaseCount={() => game.addBuilding(buildingName, process.processName, -1)}
+                        key={`${buildingGroup.buildingName}-${buildingGroup.process.processName}`}
+                        buildingGroup={buildingGroup}
+                        increaseCount={() => game.addBuilding(buildingGroup.buildingName, buildingGroup.process.processName, 1)}
+                        decreaseCount={() => game.addBuilding(buildingGroup.buildingName, buildingGroup.process.processName, -1)}
                       />
                     )
                   )}
@@ -328,15 +325,12 @@ export const ProductionOverview = ({
               ) : (
                 <div className="space-y-2">
                   {producers.map(
-                    ({ buildingName, process, totalCount, activeCount, idleCount }) => (
+                    (buildingGroup) => (
                       <BuildingCard
-                        process={process}
-                        buildingName={buildingName}
-                        totalCount={totalCount}
-                        activeCount={activeCount}
-                        idleCount={idleCount}
-                        increaseCount={() => game.addBuilding(buildingName, process.processName, 1)}
-                        decreaseCount={() => game.addBuilding(buildingName, process.processName, -1)}
+                        key={`${buildingGroup.buildingName}-${buildingGroup.process.processName}`}
+                        buildingGroup={buildingGroup}
+                        increaseCount={() => game.addBuilding(buildingGroup.buildingName, buildingGroup.process.processName, 1)}
+                        decreaseCount={() => game.addBuilding(buildingGroup.buildingName, buildingGroup.process.processName, -1)}
                       />
                     )
                   )}
