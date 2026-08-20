@@ -14,22 +14,21 @@ import {
 import { ProgressBar } from "@/components/progress-bar";
 
 
-export interface BuildingCardProps extends BuildingGroupInstance {
+export interface BuildingCardProps extends React.HTMLAttributes<HTMLDivElement> {
+  buildingGroup: BuildingGroupInstance;
   increaseCount: () => void;
   decreaseCount: () => void;
 }
 
 export function BuildingCard({
-  buildingName,
-  process,
-  totalCount,
-  activeCount,
-  idleCount,
-  increaseCount: increase,
-  decreaseCount: decrease,
+  buildingGroup,
+  increaseCount,
+  decreaseCount,
+  ...props
 }: BuildingCardProps) {
+  const { buildingName, totalCount, activeCount, idleCount, process } = buildingGroup;
   return (
-    <div className="flex flex-col gap-3 border rounded-md p-3 w-full">
+    <div className="flex flex-col gap-3 border rounded-md p-3 w-full" {...props}>
       <div className="flex">
         <div className="flex flex-col flex-1 gap-1">
           <span>
@@ -43,10 +42,10 @@ export function BuildingCard({
           </span>
         </div>
         <div className="flex flex-row gap-1">
-          <Button variant="outline" size="sm" onClick={increase}>
+          <Button variant="outline" size="sm" onClick={increaseCount}>
             <PlusIcon size={16} />
           </Button>
-          <Button variant="destructive" size="sm" onClick={decrease}>
+          <Button variant="destructive" size="sm" onClick={decreaseCount}>
             <MinusIcon size={16} />
           </Button>
         </div>
