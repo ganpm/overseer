@@ -1,20 +1,7 @@
 import { useState } from "react";
 import type { Game } from "pkg/overseer";
 import type { GameSnapshot } from "@/game/game-context.tsx";
-import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuPortal,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSubContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Item,
   ItemContent,
@@ -38,13 +25,10 @@ import {
   type SortConfig,
   selectSortFn,
 } from "@/components/sort-controller";
-import {
-  Search,
-  Hammer as Build,
-} from "lucide-react";
+import { Search } from "lucide-react";
 import { filterAndSort } from "@/lib/filter-sort";
 import type { BuildingGroupInstance, InventoryEntry } from "pkg/overseer";
-import { BuildingCard } from "@/features/production/building-card";
+import { BuildingList } from "@/features/production/building-list";
 
 export interface ProductionOverviewProps {
   game: Game,
@@ -76,45 +60,30 @@ export const ProductionOverview = ({
   const [searchQueryProducer, setSearchQueryProducer] = useState("");
   const [searchQueryInventory, setSearchQueryInventory] = useState("");
 
+  const sortConfigBuildings: SortConfig<BuildingGroupInstance> = {
+    "name": {
+      label: "Type",
+      sortFn: (a, b) => a.name.localeCompare(b.name),
+    },
+    "totalCount": {
+      label: "Count",
+      sortFn: (a, b) => a.totalCount - b.totalCount,
+    },
+    "process": {
+      label: "Process",
+      sortFn: (a, b) => a.process.name.localeCompare(b.process.name),
+    },
+  };
+
   const [sortStateGenerator, setSortStateGenerator] = useState<SortState<BuildingGroupInstance>>({
     field: "name",
     direction: "ascending",
   });
 
-  const sortConfigGenerator: SortConfig<BuildingGroupInstance> = {
-    "name": {
-      label: "Type",
-      sortFn: (a, b) => a.name.localeCompare(b.name),
-    },
-    "totalCount": {
-      label: "Count",
-      sortFn: (a, b) => a.totalCount - b.totalCount,
-    },
-    "process": {
-      label: "Process",
-      sortFn: (a, b) => a.process.name.localeCompare(b.process.name),
-    },
-  };
-
   const [sortStateProducer, setSortStateProducer] = useState<SortState<BuildingGroupInstance>>({
     field: "name",
     direction: "ascending",
   });
-
-  const sortConfigProducer: SortConfig<BuildingGroupInstance> = {
-    "name": {
-      label: "Type",
-      sortFn: (a, b) => a.name.localeCompare(b.name),
-    },
-    "totalCount": {
-      label: "Count",
-      sortFn: (a, b) => a.totalCount - b.totalCount,
-    },
-    "process": {
-      label: "Process",
-      sortFn: (a, b) => a.process.name.localeCompare(b.process.name),
-    },
-  };
 
   const [sortStateInventory, setSortStateInventory] = useState<SortState<InventoryEntry>>({
     field: "resource",
@@ -140,7 +109,7 @@ export const ProductionOverview = ({
       (building) => building.process.inputs.map((input) => input.resource).join(" "),
       (building) => building.process.outputs.map((output) => output.resource).join(" "),
     ],
-    sortFn: selectSortFn(sortConfigGenerator, sortStateGenerator),
+    sortFn: selectSortFn(sortConfigBuildings, sortStateGenerator),
   });
 
   const producers = filterAndSort(constructedProducers, {
@@ -151,7 +120,7 @@ export const ProductionOverview = ({
       (building) => building.process.inputs.map((input) => input.resource).join(" "),
       (building) => building.process.outputs.map((output) => output.resource).join(" "),
     ],
-    sortFn: selectSortFn(sortConfigProducer, sortStateProducer),
+    sortFn: selectSortFn(sortConfigBuildings, sortStateProducer),
   });
 
   const inventory = filterAndSort(rawInventory, {
@@ -171,173 +140,39 @@ export const ProductionOverview = ({
       <Accordion multiple defaultValue={["power-generators", "production-buildings", "inventory"]}>
         <AccordionItem value="power-generators">
           <AccordionTrigger>Power Generators ({constructedGenerators.length})</AccordionTrigger>
-          <AccordionContent>
-            <div className="space-y-2">
-              <div className="flex gap-1">
-                <DropdownMenu>
-                  <DropdownMenuTrigger render={<Button />}>
-                    <Build /> Build
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuGroup>
-                      <DropdownMenuLabel>Power Generators</DropdownMenuLabel>
-                      {availableGenerators.map(
-                        (building) => (
-                          <DropdownMenuSub key={building.name}>
-                            <DropdownMenuSubTrigger>
-                              {building.name}
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                              <DropdownMenuSubContent>
-                                <DropdownMenuLabel>
-                                  {building.name} Processes
-                                </DropdownMenuLabel>
-                                {building.processOptions.map(
-                                  (processName) => (
-                                    <DropdownMenuItem
-                                      key={processName}
-                                      onClick={() => game.addBuilding(building.name, processName, 1)}
-                                    >
-                                      {processName}
-                                    </DropdownMenuItem>
-                                  )
-                                )}
-                              </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                          </DropdownMenuSub>
-                        )
-                      )}
-                    </DropdownMenuGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <InputGroup>
-                  <InputGroupInput
-                    placeholder="Search..."
-                    value={searchQueryGenerator}
-                    onChange={(e) => setSearchQueryGenerator(e.target.value)}
-                  />
-                  <InputGroupAddon>
-                    <Search />
-                  </InputGroupAddon>
-                  {searchQueryGenerator.trim() !== "" && (
-                    <InputGroupAddon align="inline-end">{generators.length} results</InputGroupAddon>
-                  )}
-                </InputGroup>
-                <SortController
-                  sortState={sortStateGenerator}
-                  onChange={setSortStateGenerator}
-                  config={sortConfigGenerator}
-                />
-              </div>
-              {constructedGenerators.length === 0 ? (
-                <p className="flex justify-center text-muted-foreground my-5">
-                  No power generators built.
-                </p>
-              ) : generators.length === 0 ? (
-                <p className="flex justify-center text-muted-foreground my-5">
-                  No power generators match the search query.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {generators.map(
-                    (buildingGroup) => (
-                      <BuildingCard
-                        key={`${buildingGroup.name}-${buildingGroup.process.name}`}
-                        buildingGroup={buildingGroup}
-                        increaseCount={() => game.addBuilding(buildingGroup.name, buildingGroup.process.name, 1)}
-                        decreaseCount={() => game.addBuilding(buildingGroup.name, buildingGroup.process.name, -1)}
-                      />
-                    )
-                  )}
-                </div>
-              )}
-            </div>
-          </AccordionContent>
+          <BuildingList
+            availableBuildings={availableGenerators}
+            builtBuildings={constructedGenerators}
+            filteredBuildings={generators}
+            sectionLabel="Power Generators"
+            searchQuery={searchQueryGenerator}
+            onSearchQueryChange={setSearchQueryGenerator}
+            sortState={sortStateGenerator}
+            onSortStateChange={setSortStateGenerator}
+            sortConfig={sortConfigBuildings}
+            onBuild={(buildingName, processName) => game.addBuilding(buildingName, processName, 1)}
+            onChangeCount={(buildingName, processName, delta) => game.addBuilding(buildingName, processName, delta)}
+            emptyBuiltMessage="No power generators built."
+            emptySearchMessage="No power generators match the search query."
+          />
         </AccordionItem>
         <AccordionItem value="production-buildings">
           <AccordionTrigger>Production Buildings ({constructedProducers.length})</AccordionTrigger>
-          <AccordionContent>
-            <div className="space-y-2">
-              <div className="flex gap-1">
-                <DropdownMenu>
-                  <DropdownMenuTrigger render={<Button />}>
-                    <Build /> Build
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuGroup>
-                      <DropdownMenuLabel>Production Buildings</DropdownMenuLabel>
-                      {availableProducers.map(
-                        (building) => (
-                          <DropdownMenuSub key={building.name}>
-                            <DropdownMenuSubTrigger>
-                              {building.name}
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuPortal>
-                              <DropdownMenuSubContent>
-                                <DropdownMenuLabel>
-                                  {building.name} Processes
-                                </DropdownMenuLabel>
-                                {building.processOptions.map(
-                                  (processName) => (
-                                    <DropdownMenuItem
-                                      key={processName}
-                                      onClick={() => game.addBuilding(building.name, processName, 1)}
-                                    >
-                                      {processName}
-                                    </DropdownMenuItem>
-                                  )
-                                )}
-                              </DropdownMenuSubContent>
-                            </DropdownMenuPortal>
-                          </DropdownMenuSub>
-                        )
-                      )}
-                    </DropdownMenuGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <InputGroup>
-                  <InputGroupInput
-                    placeholder="Search..."
-                    value={searchQueryProducer}
-                    onChange={(e) => setSearchQueryProducer(e.target.value)}
-                  />
-                  <InputGroupAddon>
-                    <Search />
-                  </InputGroupAddon>
-                  {searchQueryProducer.trim() !== "" && (
-                    <InputGroupAddon align="inline-end">{producers.length} results</InputGroupAddon>
-                  )}
-                </InputGroup>
-                <SortController
-                  sortState={sortStateProducer}
-                  onChange={setSortStateProducer}
-                  config={sortConfigProducer}
-                />
-              </div>
-              {constructedProducers.length === 0 ? (
-                <p className="flex justify-center text-muted-foreground my-5">
-                  No production buildings built.
-                </p>
-              ) : producers.length === 0 ? (
-                <p className="flex justify-center text-muted-foreground my-5">
-                  No production buildings match the search query.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {producers.map(
-                    (group) => (
-                      <BuildingCard
-                        key={`${group.name}-${group.process.name}`}
-                        buildingGroup={group}
-                        increaseCount={() => game.addBuilding(group.name, group.process.name, 1)}
-                        decreaseCount={() => game.addBuilding(group.name, group.process.name, -1)}
-                      />
-                    )
-                  )}
-                </div>
-              )}
-            </div>
-          </AccordionContent>
+          <BuildingList
+            availableBuildings={availableProducers}
+            builtBuildings={constructedProducers}
+            filteredBuildings={producers}
+            sectionLabel="Production Buildings"
+            searchQuery={searchQueryProducer}
+            onSearchQueryChange={setSearchQueryProducer}
+            sortState={sortStateProducer}
+            onSortStateChange={setSortStateProducer}
+            sortConfig={sortConfigBuildings}
+            onBuild={(buildingName, processName) => game.addBuilding(buildingName, processName, 1)}
+            onChangeCount={(buildingName, processName, delta) => game.addBuilding(buildingName, processName, delta)}
+            emptyBuiltMessage="No production buildings built."
+            emptySearchMessage="No production buildings match the search query."
+          />
         </AccordionItem>
         <AccordionItem value="inventory">
           <AccordionTrigger>Inventory ({inventory.length})</AccordionTrigger>
