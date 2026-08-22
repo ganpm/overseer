@@ -1,31 +1,11 @@
 import { useState } from "react";
 import { Separator } from "@/components/ui/separator";
-import { CartesianGrid, Bar, BarChart, XAxis, YAxis, ReferenceLine } from "recharts";
-import {
-  Item,
-  ItemContent,
-  ItemTitle,
-  ItemDescription,
-} from "@/components/ui/item";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
-import {
-  Package,
-  TrendingUp,
-  TrendingDown,
-  MoveRight as TrendingNeutral,
-  Clock as RateIcon,
-  ClockArrowUp as RateUpIcon,
-  ClockArrowDown as RateDownIcon,
   Search,
 } from "lucide-react";
 import {
@@ -36,9 +16,8 @@ import {
 } from "@/components/sort-controller";
 import { filterAndSort } from "@/lib/filter-sort";
 import type { ProductionChartSeries } from "pkg/overseer";
+import { ChartCard } from "@/features/analytics/chart-card";
 
-
-const toLocaleString = (number: number) => number.toLocaleString(undefined, { maximumFractionDigits: 2 })
 
 const isEffectivelyZero = (value: number) => Math.abs(value) < 1e-9;
 
@@ -88,17 +67,6 @@ export function AnalyticsOverview({
     sortFn: selectSortFn(sortConfigCharts, sortStateCharts),
   });
 
-  const config = {
-    produced: {
-      label: "Produced",
-      color: "oklch(0.70 0.16 153)",
-    },
-    consumed: {
-      label: "Consumed",
-      color: "oklch(0.62 0.19 25)",
-    },
-  } satisfies ChartConfig;
-
   return (
     <div className="flex flex-col gap-2 mx-4 mt-4 mb-16">
       <span className="font-heading text-base font-medium">
@@ -135,82 +103,9 @@ export function AnalyticsOverview({
         </p>
       ) : (
         <div className="flex flex-col space-y-2">
-          {queriedCharts.map((series) => {
-            const resourceName = series.resourceName;
-
-            const currentAmountString = toLocaleString(series.currentAmount);
-            const averageRateString = toLocaleString(series.averageRate);
-            const averageProductionString = toLocaleString(series.averageProduction);
-            const averageConsumptionString = toLocaleString(series.averageConsumption);
-            const trendIcon = series.averageRate > 0 ? <TrendingUp /> : series.averageRate < 0 ? <TrendingDown /> : <TrendingNeutral />;
-
-            return (
-              <Item key={resourceName} variant="outline">
-                <ItemContent>
-                  <ItemTitle className="flex items-center gap-2">
-                    {resourceName} {trendIcon}
-                  </ItemTitle>
-                  <ItemDescription className="flex flex-col gap-1">
-                    <div className="flex gap-2">
-                      <span className="flex flex-1 justify-start items-center gap-1">
-                        <Package size={14} />
-                        {currentAmountString}
-                      </span>
-                      <span className="flex flex-1 justify-start items-center gap-1">
-                        <RateIcon size={14} />
-                        {averageRateString}/s
-                      </span>
-                      <span className="flex flex-1 justify-start items-center gap-1">
-                        <RateUpIcon size={14} />
-                        {averageProductionString}/s
-                      </span>
-                      <span className="flex flex-1 justify-start items-center gap-1">
-                        <RateDownIcon size={14} />
-                        {averageConsumptionString}/s
-                      </span>
-                    </div>
-                  </ItemDescription>
-                  <ChartContainer config={config} className="h-30 w-full">
-                    <BarChart
-                      data={series.points}
-                      stackOffset="sign"
-                    >
-                      <CartesianGrid />
-                      <YAxis
-                        width="auto"
-                        tickLine={true}
-                        axisLine={false}
-                        niceTicks="snap125"
-                      />
-                      <XAxis
-                        dataKey="label"
-                        tickLine={true}
-                        axisLine={false}
-                        //ticks={["-60s", "-45s", "-30s", "-15s", "0s"]}
-                        niceTicks="snap125"
-                      />
-                      <ChartTooltip
-                        content={<ChartTooltipContent className="w-40" />}
-                      />
-                      <ReferenceLine y={0} stroke="var(--color-border)" />
-                      <Bar
-                        dataKey="consumed"
-                        stackId="a"
-                        isAnimationActive={false}
-                        fill="var(--color-consumed)"
-                      />
-                      <Bar
-                        dataKey="produced"
-                        stackId="a"
-                        isAnimationActive={false}
-                        fill="var(--color-produced)"
-                      />
-                    </BarChart>
-                  </ChartContainer>
-                </ItemContent>
-              </Item>
-            )
-          })}
+          {queriedCharts.map((series) =>
+            <ChartCard key={series.resourceName} series={series} />
+          )}
         </div>
       )}
     </div>
