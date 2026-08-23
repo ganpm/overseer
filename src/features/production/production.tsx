@@ -3,32 +3,20 @@ import type { Game } from "pkg/overseer";
 import type { GameSnapshot } from "@/game/game-context.tsx";
 import { Separator } from "@/components/ui/separator";
 import {
-  Item,
-  ItemContent,
-  ItemTitle,
-  ItemActions,
-} from "@/components/ui/item";
-import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group";
-import {
-  SortController,
   type SortState,
   type SortConfig,
   selectSortFn,
 } from "@/components/sort-controller";
-import { Search } from "lucide-react";
 import { filterAndSort } from "@/lib/filter-sort";
 import type { BuildingGroupInstance, InventoryEntry } from "pkg/overseer";
 import { BuildingList } from "@/features/production/building-list";
+import { InventoryList } from "@/features/production/inventory-list";
 
 export interface ProductionOverviewProps {
   game: Game,
@@ -39,17 +27,15 @@ export const ProductionOverview = ({
   game,
   snapshot,
 }: ProductionOverviewProps) => {
-  const availableGenerators = Object.values(game.data.buildings).filter((building) =>
-    building.processOptions.some((name) => {
-      const process = game.data.processes[name];
-      return process.powerGeneration > 0;
-    })
+  const availableGenerators = Object.values(game.data.buildings).filter(
+    (building) => building.processOptions.some(
+      (name) => game.data.processes[name].powerGeneration > 0
+    )
   );
-  const availableProducers = Object.values(game.data.buildings).filter((building) =>
-    building.processOptions.some((name) => {
-      const process = game.data.processes[name];
-      return process.powerConsumption > 0;
-    })
+  const availableProducers = Object.values(game.data.buildings).filter(
+    (building) => building.processOptions.some(
+      (name) => game.data.processes[name].powerConsumption > 0
+    )
   );
   const constructedBuildings = snapshot.buildings.filter((building) => building.totalCount > 0);
   const constructedGenerators = constructedBuildings.filter((building) => building.process.powerGeneration > 0);
@@ -181,50 +167,14 @@ export const ProductionOverview = ({
         <AccordionItem value="inventory">
           <AccordionTrigger>Inventory ({inventory.length})</AccordionTrigger>
           <AccordionContent>
-            <div className="space-y-2">
-              <div className="flex gap-1">
-                <InputGroup>
-                  <InputGroupInput
-                    placeholder="Search..."
-                    value={searchQueryInventory}
-                    onChange={(e) => setSearchQueryInventory(e.target.value)}
-                  />
-                  <InputGroupAddon>
-                    <Search />
-                  </InputGroupAddon>
-                  {searchQueryInventory.trim() !== "" && (
-                    <InputGroupAddon align="inline-end">{inventory.length} results</InputGroupAddon>
-                  )}
-                </InputGroup>
-                <SortController
-                  sortState={sortStateInventory}
-                  onChange={setSortStateInventory}
-                  config={sortConfigInventory}
-                />
-              </div>
-              {inventory.length === 0 ? (
-                <p className="flex justify-center text-muted-foreground my-5">
-                  Inventory is empty.
-                </p>
-              ) : inventory.length === 0 ? (
-                <p className="flex justify-center text-muted-foreground my-5">
-                  Nothing in inventory matches the search query.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {inventory.map(({ resource, amount }) =>
-                    <Item variant="outline" key={resource}>
-                      <ItemContent>
-                        <ItemTitle>{resource}</ItemTitle>
-                      </ItemContent>
-                      <ItemActions>
-                        <span>{amount}</span>
-                      </ItemActions>
-                    </Item>
-                  )}
-                </div>
-              )}
-            </div>
+            <InventoryList
+              inventory={inventory}
+              searchQueryInventory={searchQueryInventory}
+              setSearchQueryInventory={setSearchQueryInventory}
+              sortStateInventory={sortStateInventory}
+              setSortStateInventory={setSortStateInventory}
+              sortConfigInventory={sortConfigInventory}
+            />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
