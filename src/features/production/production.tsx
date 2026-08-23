@@ -140,39 +140,43 @@ export const ProductionOverview = ({
       <Accordion multiple defaultValue={["power-generators", "production-buildings", "inventory"]}>
         <AccordionItem value="power-generators">
           <AccordionTrigger>Power Generators ({constructedGenerators.length})</AccordionTrigger>
-          <BuildingList
-            availableBuildings={availableGenerators}
-            builtBuildings={constructedGenerators}
-            filteredBuildings={generators}
-            sectionLabel="Power Generators"
-            searchQuery={searchQueryGenerator}
-            onSearchQueryChange={setSearchQueryGenerator}
-            sortState={sortStateGenerator}
-            onSortStateChange={setSortStateGenerator}
-            sortConfig={sortConfigBuildings}
-            onBuild={(buildingName, processName) => game.addBuilding(buildingName, processName, 1)}
-            onChangeCount={(buildingName, processName, delta) => game.addBuilding(buildingName, processName, delta)}
-            emptyBuiltMessage="No power generators built."
-            emptySearchMessage="No power generators match the search query."
-          />
+          <AccordionContent>
+            <BuildingList
+              availableBuildings={availableGenerators}
+              builtBuildings={constructedGenerators}
+              filteredBuildings={generators}
+              sectionLabel="Power Generators"
+              searchQuery={searchQueryGenerator}
+              onSearchQueryChange={setSearchQueryGenerator}
+              sortState={sortStateGenerator}
+              onSortStateChange={setSortStateGenerator}
+              sortConfig={sortConfigBuildings}
+              onBuild={(buildingName, processName) => game.addBuilding(buildingName, processName, 1)}
+              onChangeCount={(buildingName, processName, delta) => game.addBuilding(buildingName, processName, delta)}
+              emptyBuiltMessage="No power generators built."
+              emptySearchMessage="No power generators match the search query."
+            />
+          </AccordionContent>
         </AccordionItem>
         <AccordionItem value="production-buildings">
           <AccordionTrigger>Production Buildings ({constructedProducers.length})</AccordionTrigger>
-          <BuildingList
-            availableBuildings={availableProducers}
-            builtBuildings={constructedProducers}
-            filteredBuildings={producers}
-            sectionLabel="Production Buildings"
-            searchQuery={searchQueryProducer}
-            onSearchQueryChange={setSearchQueryProducer}
-            sortState={sortStateProducer}
-            onSortStateChange={setSortStateProducer}
-            sortConfig={sortConfigBuildings}
-            onBuild={(buildingName, processName) => game.addBuilding(buildingName, processName, 1)}
-            onChangeCount={(buildingName, processName, delta) => game.addBuilding(buildingName, processName, delta)}
-            emptyBuiltMessage="No production buildings built."
-            emptySearchMessage="No production buildings match the search query."
-          />
+          <AccordionContent>
+            <BuildingList
+              availableBuildings={availableProducers}
+              builtBuildings={constructedProducers}
+              filteredBuildings={producers}
+              sectionLabel="Production Buildings"
+              searchQuery={searchQueryProducer}
+              onSearchQueryChange={setSearchQueryProducer}
+              sortState={sortStateProducer}
+              onSortStateChange={setSortStateProducer}
+              sortConfig={sortConfigBuildings}
+              onBuild={(buildingName, processName) => game.addBuilding(buildingName, processName, 1)}
+              onChangeCount={(buildingName, processName, delta) => game.addBuilding(buildingName, processName, delta)}
+              emptyBuiltMessage="No production buildings built."
+              emptySearchMessage="No production buildings match the search query."
+            />
+          </AccordionContent>
         </AccordionItem>
         <AccordionItem value="inventory">
           <AccordionTrigger>Inventory ({inventory.length})</AccordionTrigger>

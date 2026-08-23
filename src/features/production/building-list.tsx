@@ -12,7 +12,6 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AccordionContent } from "@/components/ui/accordion";
 import {
 	InputGroup,
 	InputGroupAddon,
@@ -66,81 +65,79 @@ export function BuildingList({
 	emptySearchMessage,
 }: BuildingListProps) {
 	return (
-		<AccordionContent>
-			<div className="space-y-2">
-				<div className="flex gap-1">
-					<DropdownMenu>
-						<DropdownMenuTrigger render={<Button />}>
-							<Build /> Build
-						</DropdownMenuTrigger>
-						<DropdownMenuContent>
-							<DropdownMenuGroup>
-								<DropdownMenuLabel>{sectionLabel}</DropdownMenuLabel>
-								{availableBuildings.map((building) => (
-									<DropdownMenuSub key={building.name}>
-										<DropdownMenuSubTrigger>
-											{building.name}
-										</DropdownMenuSubTrigger>
-										<DropdownMenuPortal>
-											<DropdownMenuSubContent>
-												<DropdownMenuLabel>
-													{building.name} Processes
-												</DropdownMenuLabel>
-												{building.processOptions.map((processName) => (
-													<DropdownMenuItem
-														key={processName}
-														onClick={() => onBuild(building.name, processName)}
-													>
-														{processName}
-													</DropdownMenuItem>
-												))}
-											</DropdownMenuSubContent>
-										</DropdownMenuPortal>
-									</DropdownMenuSub>
-								))}
-							</DropdownMenuGroup>
-						</DropdownMenuContent>
-					</DropdownMenu>
-					<InputGroup>
-						<InputGroupInput
-							placeholder="Search..."
-							value={searchQuery}
-							onChange={(e) => onSearchQueryChange(e.target.value)}
-						/>
-						<InputGroupAddon>
-							<Search />
-						</InputGroupAddon>
-						{searchQuery.trim() !== "" && (
-							<InputGroupAddon align="inline-end">{filteredBuildings.length} results</InputGroupAddon>
-						)}
-					</InputGroup>
-					<SortController
-						sortState={sortState}
-						onChange={onSortStateChange}
-						config={sortConfig}
-					/>
-				</div>
-				{builtBuildings.length === 0 ? (
-					<p className="flex justify-center text-muted-foreground my-5">
-						{emptyBuiltMessage}
-					</p>
-				) : filteredBuildings.length === 0 ? (
-					<p className="flex justify-center text-muted-foreground my-5">
-						{emptySearchMessage}
-					</p>
-				) : (
-					<div className="space-y-2">
-						{filteredBuildings.map((buildingGroup) => (
-							<BuildingCard
-								key={`${buildingGroup.name}-${buildingGroup.process.name}`}
-								buildingGroup={buildingGroup}
-								increaseCount={() => onChangeCount(buildingGroup.name, buildingGroup.process.name, 1)}
-								decreaseCount={() => onChangeCount(buildingGroup.name, buildingGroup.process.name, -1)}
-							/>
-						))}
-					</div>
-				)}
-			</div>
-		</AccordionContent>
+		<div className="space-y-2">
+      <div className="flex gap-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button />}>
+            <Build /> Build
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>{sectionLabel}</DropdownMenuLabel>
+              {availableBuildings.map((building) => (
+                <DropdownMenuSub key={building.name}>
+                  <DropdownMenuSubTrigger>
+                    {building.name}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuLabel>
+                        {building.name} Processes
+                      </DropdownMenuLabel>
+                      {building.processOptions.map((processName) => (
+                        <DropdownMenuItem
+                          key={processName}
+                          onClick={() => onBuild(building.name, processName)}
+                        >
+                          {processName}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <InputGroup>
+          <InputGroupInput
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => onSearchQueryChange(e.target.value)}
+          />
+          <InputGroupAddon>
+            <Search />
+          </InputGroupAddon>
+          {searchQuery.trim() !== "" && (
+            <InputGroupAddon align="inline-end">{filteredBuildings.length} results</InputGroupAddon>
+          )}
+        </InputGroup>
+        <SortController
+          sortState={sortState}
+          onChange={onSortStateChange}
+          config={sortConfig}
+        />
+      </div>
+      {builtBuildings.length === 0 ? (
+        <p className="flex justify-center text-muted-foreground my-5">
+          {emptyBuiltMessage}
+        </p>
+      ) : filteredBuildings.length === 0 ? (
+        <p className="flex justify-center text-muted-foreground my-5">
+          {emptySearchMessage}
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {filteredBuildings.map((buildingGroup) => (
+            <BuildingCard
+              key={`${buildingGroup.name}-${buildingGroup.process.name}`}
+              buildingGroup={buildingGroup}
+              increaseCount={() => onChangeCount(buildingGroup.name, buildingGroup.process.name, 1)}
+              decreaseCount={() => onChangeCount(buildingGroup.name, buildingGroup.process.name, -1)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
 	);
 }
