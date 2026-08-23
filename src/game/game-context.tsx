@@ -17,13 +17,13 @@ import { validateGameData } from "@/game/game-data.schema";
 import { Spinner } from "@/components/ui/spinner";
 
 // Simulation tick interval in milliseconds
-const TICK_MS = 16.667; // 60 FPS
-const MAX_CATCH_UP_TICKS = 5;
+export const TICK_MS = 16.667; // 60 FPS
+export const MAX_CATCH_UP_TICKS = 5;
 
 // 
-const SAMPLE_INTERVAL = 1.0;
-const SAMPLE_LENGTH = 30;
-const LOAD_FADE_MS = 400;
+export const SAMPLE_INTERVAL = 1.0;
+export const SAMPLE_LENGTH = 30;
+export const LOAD_FADE_MS = 400;
 
 export interface GameSnapshot {
   buildings: BuildingGroupInstance[];
