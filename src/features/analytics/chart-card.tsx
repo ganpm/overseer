@@ -88,13 +88,17 @@ export function ChartCard({
             width="auto"
             tickLine={true}
             axisLine={false}
-            niceTicks="snap125"
+            type="number"
+            niceTicks="adaptive"
           />
           <XAxis
             dataKey="label"
             tickLine={true}
             axisLine={false}
-            niceTicks="snap125"
+            type="number"
+            tickFormatter={(value) => `${value}s`}
+            niceTicks="adaptive"
+            domain={[0, "dataMax"]}
           />
           <ChartTooltip
             content={<ChartTooltipContent className="w-40" />}

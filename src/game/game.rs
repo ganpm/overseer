@@ -113,7 +113,7 @@ pub struct GameData {
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductionChartPoint {
-    label: String,
+    label: f64,
     produced: f64,
     consumed: f64,
 }
@@ -448,7 +448,7 @@ impl Game {
                 .zip(history.consumed.iter())
                 .enumerate()
                 .map(|(index, (produced, consumed))| ProductionChartPoint {
-                    label: format!("-{}s", self.sample_length - 1 - index),
+                    label: self.sample_interval * (index + 1) as f64,
                     produced: *produced,
                     consumed: *consumed,
                 })
@@ -485,10 +485,10 @@ impl Game {
                     produced: vec![0.0; self.sample_length].into(),
                     consumed: vec![0.0; self.sample_length].into(),
                 });
-            history.produced.pop_front();
-            history.produced.push_back(sampled.produced);
-            history.consumed.pop_front();
-            history.consumed.push_back(sampled.consumed);
+            history.produced.pop_back();
+            history.produced.push_front(sampled.produced);
+            history.consumed.pop_back();
+            history.consumed.push_front(sampled.consumed);
             self.flow.insert(resource_name.clone(), Rate::default()); // Reset flow for the next tick
         }
     }
