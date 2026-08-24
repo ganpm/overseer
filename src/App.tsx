@@ -11,7 +11,7 @@ import { AnalyticsOverview } from "@/features/analytics/analytics.tsx";
 
 
 export const App = () => {
-  const { game, snapshot, chartData } = useGame();
+  const { game, snapshot, throughputChartData, powerChartData } = useGame();
 
   return (
     <div className="md:w-md w-full h-screen mx-auto">
@@ -21,7 +21,7 @@ export const App = () => {
             <ProductionOverview game={game} snapshot={snapshot} />
           </TabsContent>
           <TabsContent value="analytics">
-            <AnalyticsOverview chartData={chartData} />
+            <AnalyticsOverview throughputChartData={throughputChartData} powerChartData={powerChartData} />
           </TabsContent>
         </div>
         <TabsList className="fixed bottom-0 z-50 md:w-md w-full justify-center" variant="line">

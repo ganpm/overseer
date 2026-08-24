@@ -129,6 +129,43 @@ pub struct InventoryEntry {
     amount: f64,
 }
 
+#[derive(Tsify, Serialize, Deserialize, Clone, Copy, Default)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct PowerData {
+    maximum_consumption: f64,
+    maximum_generation: f64,
+    current_consumption: f64,
+    current_generation: f64,
+}
+
+#[derive(Tsify, Serialize, Deserialize, Clone, Copy, Default)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct PowerDataPoint {
+    timestamp: f64,
+    maximum_consumption: f64,
+    maximum_generation: f64,
+    net_maximum_power: f64,
+    current_consumption: f64,
+    current_generation: f64,
+    net_current_power: f64,
+}
+
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct PowerChartData {
+    name: String,
+    average_maximum_consumption: f64,
+    average_maximum_generation: f64,
+    average_net_maximum_power: f64,
+    average_current_consumption: f64,
+    average_current_generation: f64,
+    average_net_current_power: f64,
+    points: Vec<PowerDataPoint>,
+}
+
 /// Represents the state of the game, including the player's inventory, constructed buildings, and available processes.
 #[wasm_bindgen]
 pub struct Game {
@@ -148,6 +185,12 @@ pub struct Game {
 
     /// Tracker for the flow of resources over time, allowing for historical analysis of resource production and consumption.
     throughput_tracker: HashMap<String, VecDeque<ThroughputDataPoint>>,
+
+    /// Internal variable for tracking power information
+    power_data: PowerData,
+
+    /// Internal variable for tracking power history over time
+    power_tracker: Option<VecDeque<PowerDataPoint>>,
 
     /// Lookup table for all the data loaded into the game.
     data: GameData,
@@ -202,6 +245,8 @@ impl Game {
             sample_interval,
             throughput_data: HashMap::new(),
             throughput_tracker: HashMap::new(),
+            power_data: PowerData::default(),
+            power_tracker: None,
             data: GameData {
                 resources,
                 processes,
@@ -346,20 +391,33 @@ impl Game {
             return Ok(false);
         }
 
-        let mut total_power_consumption = 0.0_f64;
-        let mut total_power_generation = 0.0_f64;
+        // Update power data for current tick
+
+        let mut maximum_power_consumption = 0.0;
+        let mut maximum_power_generation = 0.0;
+        let mut current_power_consumption = 0.0;
+        let mut current_power_generation = 0.0;
 
         self.buildings.values().for_each(|group| {
-            total_power_consumption += group.process.power_consumption * group.active_count as f64;
-            total_power_generation += group.process.power_generation * group.active_count as f64;
+            maximum_power_consumption += group.process.power_consumption * group.total_count as f64;
+            maximum_power_generation += group.process.power_generation * group.total_count as f64;
+            current_power_consumption += group.process.power_consumption * group.active_count as f64;
+            current_power_generation += group.process.power_generation * group.active_count as f64;
         });
 
-        let has_power = total_power_generation > 0.0;
+        let has_power = current_power_generation > 0.0;
 
-        let consumer_power_scale = if total_power_consumption > 0.0 {
-            (total_power_generation / total_power_consumption).clamp(0.0, 1.0)
+        let consumer_power_scale = if current_power_consumption > 0.0 {
+            (current_power_generation / current_power_consumption).clamp(0.0, 1.0)
         } else {
             1.0
+        };
+
+        self.power_data = PowerData {
+            maximum_consumption: -maximum_power_consumption,
+            maximum_generation: maximum_power_generation,
+            current_consumption: -current_power_consumption,
+            current_generation: current_power_generation,
         };
 
         let Game { inventory, buildings, ..} = self;
@@ -442,6 +500,164 @@ impl Game {
             }
             self.throughput_data.insert(resource_name.clone(), ThroughputData::default()); // Reset flow for the next tick
         }
+    }
+
+    #[wasm_bindgen(js_name = "getPowerChartData")]
+    pub fn get_power_chart_data(&self) -> Vec<PowerChartData> {
+        let points: Vec<PowerDataPoint> = self.power_tracker.clone().unwrap_or_else(|| {
+            (0..self.sample_length)
+                .map(|_| PowerDataPoint {
+                    timestamp: 0.0,
+                    maximum_consumption: 0.0,
+                    maximum_generation: 0.0,
+                    net_maximum_power: 0.0,
+                    current_consumption: 0.0,
+                    current_generation: 0.0,
+                    net_current_power: 0.0,
+                })
+                .collect()
+        }).into();
+        let average_maximum_consumption = points.iter().map(|p| p.maximum_consumption).sum::<f64>() / self.sample_length as f64;
+        let average_maximum_generation = points.iter().map(|p| p.maximum_generation).sum::<f64>() / self.sample_length as f64;
+        let average_net_maximum_power = points.iter().map(|p| p.net_maximum_power).sum::<f64>() / self.sample_length as f64;
+        let average_current_consumption = points.iter().map(|p| p.current_consumption).sum::<f64>() / self.sample_length as f64;
+        let average_current_generation = points.iter().map(|p| p.current_generation).sum::<f64>() / self.sample_length as f64;
+        let average_net_current_power = points.iter().map(|p| p.net_current_power).sum::<f64>() / self.sample_length as f64;
+
+        let charts = vec![
+            PowerChartData {
+                name: "Power".into(),
+                average_maximum_consumption,
+                average_maximum_generation,
+                average_net_maximum_power,
+                average_current_consumption,
+                average_current_generation,
+                average_net_current_power,
+                points: points.iter().cloned().collect(),
+            },
+            PowerChartData {
+                name: "Actual Power".into(),
+                average_maximum_consumption: 0.0,
+                average_maximum_generation: 0.0,
+                average_net_maximum_power: 0.0,
+                average_current_consumption,
+                average_current_generation,
+                average_net_current_power,
+                points: points.iter().map(|p| PowerDataPoint {
+                    timestamp: p.timestamp,
+                    maximum_consumption: 0.0,
+                    maximum_generation: 0.0,
+                    net_maximum_power: 0.0,
+                    current_consumption: p.current_consumption,
+                    current_generation: p.current_generation,
+                    net_current_power: p.net_current_power,
+                }).collect(),
+            },
+            PowerChartData {
+                name: "Theoretical Power".into(),
+                average_maximum_consumption,
+                average_maximum_generation,
+                average_net_maximum_power,
+                average_current_consumption: 0.0,
+                average_current_generation: 0.0,
+                average_net_current_power: 0.0,
+                points: points.iter().map(|p| PowerDataPoint {
+                    timestamp: p.timestamp,
+                    maximum_consumption: p.maximum_consumption,
+                    maximum_generation: p.maximum_generation,
+                    net_maximum_power: p.net_maximum_power,
+                    current_consumption: 0.0,
+                    current_generation: 0.0,
+                    net_current_power: 0.0,
+                }).collect(),
+            },
+            PowerChartData {
+                name: "Net Power".into(),
+                average_maximum_consumption: 0.0,
+                average_maximum_generation: 0.0,
+                average_net_maximum_power,
+                average_current_consumption: 0.0,
+                average_current_generation: 0.0,
+                average_net_current_power,
+                points: points.iter().map(|p| PowerDataPoint {
+                    timestamp: p.timestamp,
+                    maximum_consumption: 0.0,
+                    maximum_generation: 0.0,
+                    net_maximum_power: p.net_maximum_power,
+                    current_consumption: 0.0,
+                    current_generation: 0.0,
+                    net_current_power: p.net_current_power,
+                }).collect(),
+            },
+            PowerChartData {
+                name: "Consumed Power".into(),
+                average_maximum_consumption,
+                average_maximum_generation: 0.0,
+                average_net_maximum_power: 0.0,
+                average_current_consumption,
+                average_current_generation: 0.0,
+                average_net_current_power: 0.0,
+                points: points.iter().map(|p| PowerDataPoint {
+                    timestamp: p.timestamp,
+                    maximum_consumption: p.maximum_consumption,
+                    maximum_generation: 0.0,
+                    net_maximum_power: 0.0,
+                    current_consumption: p.current_consumption,
+                    current_generation: 0.0,
+                    net_current_power: 0.0,
+                }).collect(),
+            },
+            PowerChartData {
+                name: "Generated Power".into(),
+                average_maximum_consumption: 0.0,
+                average_maximum_generation,
+                average_net_maximum_power: 0.0,
+                average_current_consumption: 0.0,
+                average_current_generation,
+                average_net_current_power: 0.0,
+                points: points.iter().map(|p| PowerDataPoint {
+                    timestamp: p.timestamp,
+                    maximum_consumption: 0.0,
+                    maximum_generation: p.maximum_generation,
+                    net_maximum_power: 0.0,
+                    current_consumption: 0.0,
+                    current_generation: p.current_generation,
+                    net_current_power: 0.0,
+                }).collect(),
+            }
+        ];
+
+        return charts;
+    }
+
+    #[wasm_bindgen(js_name = "samplePowerData")]
+    pub fn sample_power_data(&mut self, timestamp: f64) {
+        let mut tracker = self.power_tracker.take().unwrap_or_else(|| {
+            (0..self.sample_length)
+                .map(|i| PowerDataPoint {
+                    timestamp: timestamp - (((self.sample_length - 1 - i) as f64) * self.sample_interval),
+                    maximum_consumption: 0.0,
+                    maximum_generation: 0.0,
+                    net_maximum_power: 0.0,
+                    current_consumption: 0.0,
+                    current_generation: 0.0,
+                    net_current_power: 0.0,
+                })
+                .collect()
+        });
+        tracker.push_back(PowerDataPoint {
+            timestamp,
+            maximum_consumption: self.power_data.maximum_consumption,
+            maximum_generation: self.power_data.maximum_generation,
+            net_maximum_power: self.power_data.maximum_generation + self.power_data.maximum_consumption,
+            current_consumption: self.power_data.current_consumption,
+            current_generation: self.power_data.current_generation,
+            net_current_power: self.power_data.current_generation + self.power_data.current_consumption,
+        });
+        while tracker.len() > self.sample_length {
+            tracker.pop_front();
+        }
+        self.power_tracker = Some(tracker);
     }
 }
 

@@ -1,22 +1,23 @@
 import { useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
-  Search,
-} from "lucide-react";
-import {
-  SortController,
   type SortState,
   type SortConfig,
   selectSortFn,
 } from "@/components/sort-controller";
 import { filterAndSort } from "@/lib/filter-sort";
-import type { ThroughputChartData } from "pkg/overseer";
-import { ChartCard } from "@/features/analytics/chart-card";
+import type {
+  ThroughputChartData,
+  PowerChartData,
+} from "pkg/overseer";
+import { ThroughputList } from "@/features/analytics/throughput-list";
+import { PowerList } from "@/features/analytics/power-list";
 
 
 const isEffectivelyZero = (value: number) => Math.abs(value) < 1e-9;
@@ -25,26 +26,26 @@ const hasAnyFlowInHistory = (series: ThroughputChartData) =>
   series.points.some((point) => !isEffectivelyZero(point.produced) || !isEffectivelyZero(point.consumed));
 
 export interface AnalyticsOverviewProps {
-  chartData: ThroughputChartData[];
+  throughputChartData: ThroughputChartData[];
+  powerChartData: PowerChartData[];
 }
 
 export function AnalyticsOverview({
-  chartData,
+  throughputChartData,
+  powerChartData,
 }: AnalyticsOverviewProps) {
-  const chartSeries = chartData.filter((series) =>
+  const nonzeroThroughputChartData = throughputChartData.filter((series) =>
     !isEffectivelyZero(series.currentAmount)
     || !isEffectivelyZero(series.averageRate)
     || hasAnyFlowInHistory(series)
   );
 
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const [sortStateCharts, setSortStateCharts] = useState<SortState<ThroughputChartData>>({
+  const [searchQueryThroughput, setSearchQueryThroughput] = useState("");
+  const [sortStateThroughput, setSortStateThroughput] = useState<SortState<ThroughputChartData>>({
     field: "resourceName",
     direction: "ascending",
   });
-  
-  const sortConfigCharts: SortConfig<ThroughputChartData> = {
+  const sortConfigThroughput: SortConfig<ThroughputChartData> = {
     "resourceName": {
       label: "Resource",
       sortFn: (a, b) => a.resourceName.localeCompare(b.resourceName),
@@ -58,13 +59,31 @@ export function AnalyticsOverview({
       sortFn: (a, b) => a.averageRate - b.averageRate,
     },
   };
-
-  const queriedCharts = filterAndSort(chartSeries, {
-    query: searchQuery,
+  const queriedThroughputCharts = filterAndSort(nonzeroThroughputChartData, {
+    query: searchQueryThroughput,
     filters: [
       (series) => series.resourceName,
     ],
-    sortFn: selectSortFn(sortConfigCharts, sortStateCharts),
+    sortFn: selectSortFn(sortConfigThroughput, sortStateThroughput),
+  });
+
+  const [searchQueryPower, setSearchQueryPower] = useState("");
+  const [sortStatePower, setSortStatePower] = useState<SortState<PowerChartData>>({
+    field: "name",
+    direction: "ascending",
+  });
+  const sortConfigPower: SortConfig<PowerChartData> = {
+    "name": {
+      label: "Name",
+      sortFn: (a, b) => a.name.localeCompare(b.name),
+    },
+  };
+  const queriedPowerCharts = filterAndSort(powerChartData, {
+    query: searchQueryPower,
+    filters: [
+      (series) => series.name,
+    ],
+    sortFn: selectSortFn(sortConfigPower, sortStatePower),
   });
 
   return (
@@ -73,41 +92,36 @@ export function AnalyticsOverview({
         Analytics
       </span>
       <Separator />
-      <div className="flex gap-1">
-        <InputGroup>
-          <InputGroupInput
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <InputGroupAddon>
-            <Search />
-          </InputGroupAddon>
-          {searchQuery && (
-            <InputGroupAddon align="inline-end">{queriedCharts.length} results</InputGroupAddon>
-          )}
-        </InputGroup>
-        <SortController
-          sortState={sortStateCharts}
-          onChange={setSortStateCharts}
-          config={sortConfigCharts}
-        />
-      </div>
-      {chartSeries.length === 0 ? (
-        <p className="flex justify-center text-muted-foreground my-5">
-          No flow data yet. Start production to populate charts.
-        </p>
-      ) : queriedCharts.length === 0 ? (
-        <p className="flex justify-center text-muted-foreground my-5">
-          No charts match the search query.
-        </p>
-      ) : (
-        <div className="flex flex-col space-y-2">
-          {queriedCharts.map((series) =>
-            <ChartCard key={series.resourceName} series={series} />
-          )}
-        </div>
-      )}
+      <Accordion multiple defaultValue={["throughput", "power"]}>
+        <AccordionItem value="throughput">
+          <AccordionTrigger>Throughput ({nonzeroThroughputChartData.length})</AccordionTrigger>
+          <AccordionContent>
+            <ThroughputList
+              searchQuery={searchQueryThroughput}
+              setSearchQuery={setSearchQueryThroughput}
+              sortStateCharts={sortStateThroughput}
+              setSortStateCharts={setSortStateThroughput}
+              sortConfigCharts={sortConfigThroughput}
+              queriedCharts={queriedThroughputCharts}
+              chartData={nonzeroThroughputChartData}
+            />
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="power">
+          <AccordionTrigger>Power</AccordionTrigger>
+          <AccordionContent>
+            <PowerList
+              searchQuery={searchQueryPower}
+              setSearchQuery={setSearchQueryPower}
+              sortStateCharts={sortStatePower}
+              setSortStateCharts={setSortStatePower}
+              sortConfigCharts={sortConfigPower}
+              queriedCharts={queriedPowerCharts}
+              chartData={powerChartData}
+            />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   )
 }

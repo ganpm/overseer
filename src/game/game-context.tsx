@@ -11,6 +11,7 @@ import init, {
   type BuildingGroupInstance,
   type InventoryEntry,
   type ThroughputChartData,
+  type PowerChartData,
 } from "pkg/overseer";
 import gameData from "@/game/game-data.json";
 import { validateGameData } from "@/game/game-data.schema";
@@ -32,7 +33,8 @@ export interface GameSnapshot {
 export interface GameContextValue {
   game: Game;
   snapshot: GameSnapshot;
-  chartData: ThroughputChartData[];
+  throughputChartData: ThroughputChartData[];
+  powerChartData: PowerChartData[];
 }
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -70,7 +72,8 @@ const readSnapshot = (game: Game): GameSnapshot => ({
 export const GameProvider = ({ children }: { children: ReactNode }) => {
   const gameRef = useRef<Game | null>(null);
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
-  const [chartData, setChartData] = useState<ThroughputChartData[]>([]);
+  const [throughputChartData, setThroughputChartData] = useState<ThroughputChartData[]>([]);
+  const [powerChartData, setPowerChartData] = useState<PowerChartData[]>([]);
   const [isReady, setIsReady] = useState(false);
   const [initErrorMessage, setInitErrorMessage] = useState<string | null>(null);
   const [isContentVisible, setIsContentVisible] = useState(false);
@@ -137,8 +140,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       sampleAccumulatorMs += sampleDeltaMs;
       if (sampleAccumulatorMs >= SAMPLE_INTERVAL_MS) {
         game.sampleThroughputData(now);
-        const chartData = game.getThroughputChartData();
-        setChartData(chartData);
+        game.samplePowerData(now);
+        setThroughputChartData(game.getThroughputChartData());
+        setPowerChartData(game.getPowerChartData());
         sampleAccumulatorMs -= SAMPLE_INTERVAL_MS;
       }
     }, SAMPLE_INTERVAL_MS);
@@ -189,7 +193,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <GameContext.Provider value={{ game: gameRef.current, snapshot, chartData }}>
+    <GameContext.Provider value={{ game: gameRef.current, snapshot, throughputChartData, powerChartData }}>
       <div
         className={isContentVisible ? "opacity-100" : "opacity-0"}
         style={{ transition: `opacity ${LOAD_FADE_MS}ms ease` }}
