@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { SAMPLE_INTERVAL_MS } from "@/game/game-context.tsx";
 
-export interface ChartCardProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ThroughputChartCardProps extends React.HTMLAttributes<HTMLDivElement> {
   series: ThroughputChartData;
 }
 
@@ -51,10 +51,10 @@ const config = {
   },
 } satisfies ChartConfig;
 
-export function ChartCard({
+export function ThroughputChartCard({
   series,
   ...props
-}: ChartCardProps) {
+}: ThroughputChartCardProps) {
   const resourceName = series.resourceName;
   
   const currentAmountString = unsignedFormat(series.currentAmount);

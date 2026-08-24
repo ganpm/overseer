@@ -11,7 +11,7 @@ import {
   type SortState,
   type SortConfig,
 } from "@/components/sort-controller";
-import { ChartCard } from "@/features/analytics/chart-card";
+import { ThroughputChartCard } from "@/features/analytics/throughput-chart-card";
 import type { ThroughputChartData } from "pkg/overseer";
 
 export interface ThroughputListProps {
@@ -66,7 +66,7 @@ export function ThroughputList({
       ) : (
         <div className="flex flex-col space-y-2">
           {queriedCharts.map((series) =>
-            <ChartCard key={series.resourceName} series={series} />
+            <ThroughputChartCard key={series.resourceName} series={series} />
           )}
         </div>
       )}
