@@ -83,7 +83,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       if (cancelled) return;
       try {
         const validatedGameData = validateGameData(gameData);
-        const game = new Game(validatedGameData, SAMPLE_LENGTH);
+        const game = new Game(validatedGameData, SAMPLE_LENGTH, SAMPLE_INTERVAL_MS);
         gameRef.current = game;
         setSnapshot(readSnapshot(game));
         setIsReady(true);

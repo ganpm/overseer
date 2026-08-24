@@ -68,12 +68,12 @@ export function ChartCard({
 
   
   const tickFormatter = (timestamp: number) => {
-    const totalSeconds = Math.floor(timestamp / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    const mm = minutes.toString().padStart(2, "0");
-    const ss = seconds.toString().padStart(2, "0");
-    return `${mm}:${ss}`;
+    const seconds = ((timestamp - domainMax) / 1000).toLocaleString(undefined, {
+      maximumFractionDigits: 0,
+      signDisplay: "never",
+    });
+    const tick = seconds === "0" ? "Now" : `T-${seconds}s`;
+    return tick;
   }
 
   return (

@@ -150,6 +150,7 @@ pub struct Game {
     buildings: HashMap<(String, String), BuildingGroupInstance>,
 
     sample_length: usize,
+    sample_interval: f64,
 
     /// Accumulator for tracking the flow of resources produced and consumed during a single tick of the game.
     throughput_values: HashMap<String, ThroughputValue>,
@@ -186,7 +187,7 @@ impl Game {
 #[wasm_bindgen]
 impl Game {
     #[wasm_bindgen(constructor)]
-    pub fn new(data: JSONGameData, sample_length: usize) -> Result<Game, JsValue> {
+    pub fn new(data: JSONGameData, sample_length: usize, sample_interval: f64) -> Result<Game, JsValue> {
         let resources = data
             .resources
             .into_iter()
@@ -207,6 +208,7 @@ impl Game {
             inventory: HashMap::new(),
             buildings: HashMap::new(),
             sample_length,
+            sample_interval,
             throughput_values: HashMap::new(),
             throughput_tracker: HashMap::new(),
             data: GameData {
@@ -430,11 +432,15 @@ impl Game {
             let tracker = self
                 .throughput_tracker
                 .entry(resource_name.clone())
-                .or_insert_with(|| vec![ThroughputPoint {
-                    timestamp,
-                    produced: 0.0,
-                    consumed: 0.0,
-                }; self.sample_length].into()); // Initialize with default points if not present
+                .or_insert_with(|| {
+                    (0..self.sample_length)
+                        .map(|i| ThroughputPoint {
+                            timestamp: timestamp - (((self.sample_length - 1 - i) as f64) * self.sample_interval),
+                            produced: 0.0,
+                            consumed: 0.0,
+                        })
+                        .collect()
+                }); // Initialize with default points if not present
             tracker.push_back(ThroughputPoint {
                 timestamp,
                 produced: sampled.produced,
