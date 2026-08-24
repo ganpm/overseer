@@ -1,11 +1,11 @@
-import type { ProductionChartSeries } from "pkg/overseer";
+import type { ProductionChartData } from "pkg/overseer";
 import {
   CartesianGrid,
-  Bar,
-  BarChart,
+  Area,
+  AreaChart,
   XAxis,
   YAxis,
-  ReferenceLine
+  matchByDataKey,
 } from "recharts";
 import {
   ChartContainer,
@@ -14,20 +14,31 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import {
-  Package,
-  TrendingUp,
-  TrendingDown,
-  MoveRight as TrendingNeutral,
-  Clock as RateIcon,
-  ClockArrowUp as RateUpIcon,
-  ClockArrowDown as RateDownIcon,
+  Package as ResourceIcon,
+  TrendingUp as IncreasingIcon,
+  TrendingDown as DecreasingIcon,
+  MoveRight as NeutralIcon,
+  Hash as CountIcon,
+  ChevronsUp as ProductionRateIcon,
+  ChevronsDown as ConsumptionRateIcon,
+  ChartNoAxesCombined as TotalRateIcon,
 } from "lucide-react";
+import { SAMPLE_INTERVAL_MS } from "@/game/game-context.tsx";
 
 export interface ChartCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  series: ProductionChartSeries;
+  series: ProductionChartData;
 }
 
-const toLocaleString = (number: number) => number.toLocaleString(undefined, { maximumFractionDigits: 2 })
+const signedFormat = (number: number) => number.toLocaleString(undefined, {
+  maximumFractionDigits: 2,
+  signDisplay: "exceptZero",
+})
+
+const unsignedFormat = (number: number) => number.toLocaleString(undefined, {
+  maximumFractionDigits: 2,
+  signDisplay: "never",
+})
+
 
 const config = {
   produced: {
@@ -46,77 +57,118 @@ export function ChartCard({
 }: ChartCardProps) {
   const resourceName = series.resourceName;
   
-  const currentAmountString = toLocaleString(series.currentAmount);
-  const averageRateString = toLocaleString(series.averageRate);
-  const averageProductionString = toLocaleString(series.averageProduction);
-  const averageConsumptionString = toLocaleString(series.averageConsumption);
+  const currentAmountString = unsignedFormat(series.currentAmount);
+  const averageRateString = signedFormat(series.averageRate);
+  const averageProductionString = unsignedFormat(series.averageProduction);
+  const averageConsumptionString = unsignedFormat(series.averageConsumption);
+
+  // Set domainMin to the 2nd point to hide the disappearing 1st point whenever the chart is updated.
+  const domainMin = series.points[1]?.timestamp ?? 0;
+  const domainMax = series.points[series.points.length - 1]?.timestamp ?? 0;
+
+  
+  const tickFormatter = (timestamp: number) => {
+    const totalSeconds = Math.floor(timestamp / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const mm = minutes.toString().padStart(2, "0");
+    const ss = seconds.toString().padStart(2, "0");
+    return `${mm}:${ss}`;
+  }
 
   return (
-    <div className="flex flex-col gap-3 border rounded-md p-3" {...props}>
+    <div className="flex flex-col gap-1 border rounded-md p-3" {...props}>
       <span className="flex items-center gap-1 font-medium">
         {resourceName}
         {(series.averageRate > 0) ? (
-          <TrendingUp size={20} className="inline-block" />
+          <IncreasingIcon size={20} className="inline-block" />
         ): (series.averageRate < 0) ? (
-          <TrendingDown size={20} className="inline-block" />
+          <DecreasingIcon size={20} className="inline-block" />
         ): (
-          <TrendingNeutral size={20} className="inline-block" />
+          <NeutralIcon size={20} className="inline-block" />
         )}
       </span>
       <div className="flex gap-2 text-muted-foreground">
-        <span className="flex flex-1 justify-start items-center gap-1">
-          <Package size={14} className="inline-block" />
+        <span className="inline-flex flex-1 justify-start items-center gap-1 whitespace-nowrap">
+          <span className="inline-flex items-center gap-0">
+            <CountIcon size={16} className="inline-block" />
+            <ResourceIcon size={16} className="inline-block" />
+          </span>
           {currentAmountString}
         </span>
-        <span className="flex flex-1 justify-start items-center gap-1">
-          <RateIcon size={14} className="inline-block" />
+        <span className="inline-flex flex-1 justify-start items-center gap-1 whitespace-nowrap">
+          <span className="inline-flex items-center gap-0">
+            <TotalRateIcon size={16} className="inline-block" />
+            <ResourceIcon size={16} className="inline-block" />
+          </span>
           {averageRateString}/s
         </span>
-        <span className="flex flex-1 justify-start items-center gap-1">
-          <RateUpIcon size={14} className="inline-block" />
+        <span className="inline-flex flex-1 justify-start items-center gap-1 whitespace-nowrap">
+          <span className="inline-flex items-center gap-0">
+            <ProductionRateIcon size={16} className="inline-block" />
+            <ResourceIcon size={16} className="inline-block" />
+          </span>
           {averageProductionString}/s
         </span>
-        <span className="flex flex-1 justify-start items-center gap-1">
-          <RateDownIcon size={14} className="inline-block" />
+        <span className="inline-flex flex-1 justify-start items-center gap-1 whitespace-nowrap">
+          <span className="inline-flex items-center gap-0">
+            <ConsumptionRateIcon size={16} className="inline-block" />
+            <ResourceIcon size={16} className="inline-block" />
+          </span>
           {averageConsumptionString}/s
         </span>
       </div>
       <ChartContainer config={config} className="h-30 w-full">
-        <BarChart data={series.points} stackOffset="sign">
+        <AreaChart
+          data={series.points}
+          responsive={true}
+          margin={{ top: 10, right: 20, left: 10, bottom: 0 }}
+        >
           <CartesianGrid />
           <YAxis
+            type="number"
             width="auto"
             tickLine={true}
-            axisLine={false}
-            type="number"
+            axisLine={true}
             niceTicks="adaptive"
           />
           <XAxis
-            dataKey="label"
-            tickLine={true}
-            axisLine={false}
+            dataKey="timestamp"
             type="number"
-            tickFormatter={(value) => `${value}s`}
+            width="auto"
+            tickLine={true}
+            axisLine={true}
             niceTicks="adaptive"
-            domain={[0, "dataMax"]}
+            tickFormatter={tickFormatter}
+            domain={[domainMin, domainMax]}
+            allowDataOverflow={true}
           />
           <ChartTooltip
             content={<ChartTooltipContent className="w-40" />}
           />
-          <ReferenceLine y={0} stroke="var(--color-border)" />
-          <Bar
+          <Area
             dataKey="consumed"
-            stackId="a"
-            isAnimationActive={false}
             fill="var(--color-consumed)"
+            fillOpacity={100}
+            stroke="var(--color-consumed)"
+            strokeOpacity={100}
+            type="stepAfter"
+            animationDuration={SAMPLE_INTERVAL_MS}
+            animationMatchBy={matchByDataKey("timestamp")}
+            animationEasing="linear"
           />
-          <Bar
+          <Area
             dataKey="produced"
-            stackId="a"
-            isAnimationActive={false}
             fill="var(--color-produced)"
+            fillOpacity={100}
+            stroke="var(--color-produced)"
+            strokeOpacity={100}
+            type="stepAfter"
+            animationDuration={SAMPLE_INTERVAL_MS}
+            animationMatchBy={matchByDataKey("timestamp")}
+            animationEasing="linear"
           />
-        </BarChart>
+        </AreaChart>
       </ChartContainer>
     </div>
   );

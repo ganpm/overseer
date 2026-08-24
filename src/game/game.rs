@@ -77,7 +77,7 @@ pub struct BuildingGroupInstance {
 #[derive(Tsify, Serialize, Deserialize, Clone, Default)]
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
-pub struct Rate {
+pub struct ThroughputValue {
     produced: f64,
     consumed: f64,
 }
@@ -112,8 +112,8 @@ pub struct GameData {
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
-pub struct ProductionChartPoint {
-    label: f64,
+pub struct ThroughputPoint {
+    timestamp: f64,
     produced: f64,
     consumed: f64,
 }
@@ -121,13 +121,13 @@ pub struct ProductionChartPoint {
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
-pub struct ProductionChartSeries {
+pub struct ProductionChartData {
     resource_name: String,
     current_amount: f64,
     average_production: f64,
     average_consumption: f64,
     average_rate: f64,
-    points: Vec<ProductionChartPoint>,
+    points: Vec<ThroughputPoint>,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
@@ -136,14 +136,6 @@ pub struct ProductionChartSeries {
 pub struct InventoryEntry {
     resource: String,
     amount: f64,
-}
-
-#[derive(Tsify, Serialize, Deserialize, Clone)]
-#[tsify(into_wasm_abi)]
-#[serde(rename_all = "camelCase")]
-pub struct RateHistoryEntry {
-    resource: String,
-    rate: RateHistory,
 }
 
 /// Represents the state of the game, including the player's inventory, constructed buildings, and available processes.
@@ -157,15 +149,13 @@ pub struct Game {
     /// The currently constructed buildings and the processes they are currently running.
     buildings: HashMap<(String, String), BuildingGroupInstance>,
 
-    sample_interval: f64,
     sample_length: usize,
-    elapsed_seconds: f64,
 
     /// Accumulator for tracking the flow of resources produced and consumed during a single tick of the game.
-    flow: HashMap<String, Rate>,
+    throughput_values: HashMap<String, ThroughputValue>,
 
     /// Tracker for the flow of resources over time, allowing for historical analysis of resource production and consumption.
-    tracker: HashMap<String, RateHistory>,
+    throughput_tracker: HashMap<String, VecDeque<ThroughputPoint>>,
 
     /// Lookup table for all the data loaded into the game.
     data: GameData,
@@ -196,7 +186,7 @@ impl Game {
 #[wasm_bindgen]
 impl Game {
     #[wasm_bindgen(constructor)]
-    pub fn new(data: JSONGameData, sample_interval: f64, sample_length: usize) -> Result<Game, JsValue> {
+    pub fn new(data: JSONGameData, sample_length: usize) -> Result<Game, JsValue> {
         let resources = data
             .resources
             .into_iter()
@@ -216,11 +206,9 @@ impl Game {
         Ok(Game {
             inventory: HashMap::new(),
             buildings: HashMap::new(),
-            sample_interval,
             sample_length,
-            elapsed_seconds: 0.0,
-            flow: HashMap::new(),
-            tracker: HashMap::new(),
+            throughput_values: HashMap::new(),
+            throughput_tracker: HashMap::new(),
             data: GameData {
                 resources,
                 processes,
@@ -242,27 +230,7 @@ impl Game {
 
     #[wasm_bindgen(getter)]
     pub fn buildings(&self) -> Vec<BuildingGroupInstance> {
-        self.buildings
-            .iter()
-            .map(|((bn, _), bgi)| BuildingGroupInstance {
-                name: bn.clone(),
-                process: bgi.process.clone(),
-                active_count: bgi.active_count,
-                idle_count: bgi.idle_count,
-                total_count: bgi.total_count,
-            })
-            .collect()
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn tracker(&self) -> Vec<RateHistoryEntry> {
-        self.tracker
-            .iter()
-            .map(|(k, v)| RateHistoryEntry {
-                resource: k.clone(),
-                rate: v.clone(),
-            })
-            .collect()
+        self.buildings.values().cloned().collect()
     }
 
     #[wasm_bindgen(getter)]
@@ -376,16 +344,14 @@ impl Game {
     }
 
     #[wasm_bindgen(js_name = "tick")]
-    pub fn tick(&mut self, delta_seconds: f64) -> Result<bool, JsValue> {
-        if !delta_seconds.is_finite() {
+    pub fn tick(&mut self, delta_ms: f64) -> Result<bool, JsValue> {
+        if !delta_ms.is_finite() {
             return Err(JsValue::from_str("Delta seconds must be finite"));
         }
 
-        if delta_seconds <= 0.0 {
+        if delta_ms <= 0.0 {
             return Ok(false);
         }
-
-        self.elapsed_seconds += delta_seconds;
 
         let mut total_power_consumption = 0.0_f64;
         let mut total_power_generation = 0.0_f64;
@@ -412,84 +378,72 @@ impl Game {
             changed |= Self::tick_group(
                 group,
                 inventory,
-                &mut self.flow,
-                delta_seconds,
+                &mut self.throughput_values,
+                delta_ms,
                 has_power,
                 consumer_power_scale
             );
         }
 
-        // Sample the resource flow history if enough time has elapsed since the last sample.
-        if self.elapsed_seconds >= self.sample_interval {
-            self.sample_resource_flow_history();
-            self.elapsed_seconds -= self.sample_interval;
-        }
-
         Ok(changed)
     }
 
-    #[wasm_bindgen(js_name = "getProductionChartSeries")]
-    pub fn get_production_chart_series(&self) -> Vec<ProductionChartSeries> {
-        let mut series = Vec::<ProductionChartSeries>::new();
+    #[wasm_bindgen(js_name = "getProductionChartData")]
+    pub fn get_production_chart_data(&self) -> Vec<ProductionChartData> {
+        let mut series = Vec::<ProductionChartData>::new();
 
         for resource_name in self.data.resources.keys() {
-            let history = self
-                .tracker
+            let points = self
+                .throughput_tracker
                 .get(resource_name)
                 .cloned()
-                .unwrap_or_else(|| RateHistory {
-                    produced: vec![0.0; self.sample_length].into(),
-                    consumed: vec![0.0; self.sample_length].into(),
-                });
-
-            let points = history
-                .produced
-                .iter()
-                .zip(history.consumed.iter())
-                .enumerate()
-                .map(|(index, (produced, consumed))| ProductionChartPoint {
-                    label: self.sample_interval * (index + 1) as f64,
-                    produced: *produced,
-                    consumed: *consumed,
-                })
-                .collect::<Vec<_>>();
+                .unwrap_or_else(|| vec![ThroughputPoint {
+                    timestamp: 0.0,
+                    produced: 0.0,
+                    consumed: 0.0,
+                }; self.sample_length].into());
 
             let current_amount = *self.inventory.get(resource_name).unwrap_or(&0.0);
-            let average_production = history.produced.iter().sum::<f64>() / self.sample_length as f64;
-            let average_consumption = history.consumed.iter().sum::<f64>() / self.sample_length as f64;
+            let average_production = points.iter().map(|p| p.produced).sum::<f64>() / self.sample_length as f64;
+            let average_consumption = points.iter().map(|p| p.consumed).sum::<f64>() / self.sample_length as f64;
             let average_rate = average_production + average_consumption;
 
-            series.push(ProductionChartSeries {
+            series.push(ProductionChartData {
                 resource_name: resource_name.clone(),
                 current_amount: current_amount,
                 average_production,
                 average_consumption,
                 average_rate,
-                points,
+                points: points.into(),
             });
         }
 
         series
     }
 
-    #[wasm_bindgen(js_name = "sampleResourceFlowHistory")]
-    pub fn sample_resource_flow_history(&mut self) {
-        let sample_flow = std::mem::take(&mut self.flow);
+    #[wasm_bindgen(js_name = "sampleThroughput")]
+    pub fn sample_throughput(&mut self, timestamp: f64) {
+        let throughput_values = std::mem::take(&mut self.throughput_values);
 
         for resource_name in self.data.resources.keys() {
-            let sampled = sample_flow.get(resource_name).cloned().unwrap_or_default();
-            let history = self
-                .tracker
+            let sampled = throughput_values.get(resource_name).cloned().unwrap_or_default();
+            let tracker = self
+                .throughput_tracker
                 .entry(resource_name.clone())
-                .or_insert_with(|| RateHistory {
-                    produced: vec![0.0; self.sample_length].into(),
-                    consumed: vec![0.0; self.sample_length].into(),
-                });
-            history.produced.pop_back();
-            history.produced.push_front(sampled.produced);
-            history.consumed.pop_back();
-            history.consumed.push_front(sampled.consumed);
-            self.flow.insert(resource_name.clone(), Rate::default()); // Reset flow for the next tick
+                .or_insert_with(|| vec![ThroughputPoint {
+                    timestamp,
+                    produced: 0.0,
+                    consumed: 0.0,
+                }; self.sample_length].into()); // Initialize with default points if not present
+            tracker.push_back(ThroughputPoint {
+                timestamp,
+                produced: sampled.produced,
+                consumed: sampled.consumed,
+            });
+            while tracker.len() > self.sample_length {
+                tracker.pop_front();
+            }
+            self.throughput_values.insert(resource_name.clone(), ThroughputValue::default()); // Reset flow for the next tick
         }
     }
 }
@@ -498,7 +452,7 @@ impl Game {
 impl Game {
     fn consume_inputs(
         inventory: &mut HashMap<String, f64>,
-        flow: &mut HashMap<String, Rate>,
+        throughput_values: &mut HashMap<String, ThroughputValue>,
         inputs: &[ResourceAmount],
         count: u32,
     ) {
@@ -508,25 +462,25 @@ impl Game {
                 continue;
             }
             *inventory.entry(input.resource.clone()).or_insert(0.0) -= consumed_amount;
-            flow
+            throughput_values
                 .entry(input.resource.clone())
-                .or_insert_with(Rate::default)
+                .or_insert_with(ThroughputValue::default)
                 .consumed -= consumed_amount;
         }
     }
 
     fn produce_outputs(
         inventory: &mut HashMap<String, f64>,
-        flow: &mut HashMap<String, Rate>,
+        throughtput_values: &mut HashMap<String, ThroughputValue>,
         outputs: &[ResourceAmount],
         count: u32,
     ) {
         for output in outputs {
             let produced_amount = output.amount * count as f64;
             *inventory.entry(output.resource.clone()).or_insert(0.0) += produced_amount;
-            flow
+            throughtput_values
                 .entry(output.resource.clone())
-                .or_insert_with(Rate::default)
+                .or_insert_with(ThroughputValue::default)
                 .produced += produced_amount;
         }
     }
@@ -534,8 +488,8 @@ impl Game {
     fn tick_group(
         group: &mut BuildingGroupInstance,
         inventory: &mut HashMap<String, f64>,
-        flow: &mut HashMap<String, Rate>,
-        delta_seconds: f64,
+        throughput_values: &mut HashMap<String, ThroughputValue>,
+        delta_ms: f64,
         has_power: bool,
         consumer_power_scale: f64,
     ) -> bool {
@@ -565,18 +519,18 @@ impl Game {
         group.process.efficiency = efficiency;
 
         if group.active_count > 0 {
-            let time_advanced = delta_seconds * efficiency;
+            let time_advanced = delta_ms * efficiency;
             let next_elapsed = group.process.elapsed + time_advanced;
 
             // Cycle not complete: just increment elapsed cycle time and return.
-            if next_elapsed < group.process.duration {
+            if next_elapsed < group.process.duration * 1000.0 {
                 group.process.elapsed = next_elapsed;
                 return true;
             }
 
             // Cycle complete: produce outputs for buildings that were
             // actively working this cycle.
-            Self::produce_outputs(inventory, flow, &group.process.outputs, group.active_count);
+            Self::produce_outputs(inventory, throughput_values, &group.process.outputs, group.active_count);
 
             // Buiildings that just finished and and those in idle count (new arrivals or previously resource-starved)
             // now compete together for the next cycle.
@@ -589,7 +543,7 @@ impl Game {
 
             if starting > 0 {
                 // Consume inputs for the buildings that will start the next cycle.
-                Self::consume_inputs(inventory, flow, &group.process.inputs, starting);
+                Self::consume_inputs(inventory, throughput_values, &group.process.inputs, starting);
             }
             group.active_count = starting;
             group.idle_count = candidates.saturating_sub(starting);
@@ -600,7 +554,7 @@ impl Game {
             let starting = Self::max_affordable(inventory, &group.process.inputs, group.idle_count);
             if starting > 0 {
                 // Consume inputs for the buildings that will start the next cycle.
-                Self::consume_inputs(inventory, flow, &group.process.inputs, starting);
+                Self::consume_inputs(inventory, throughput_values, &group.process.inputs, starting);
 
                 group.active_count = starting;
                 group.idle_count = group.idle_count.saturating_sub(starting);

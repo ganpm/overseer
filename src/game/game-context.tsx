@@ -10,18 +10,17 @@ import init, {
   Game,
   type BuildingGroupInstance,
   type InventoryEntry,
-  type ProductionChartSeries,
+  type ProductionChartData,
 } from "pkg/overseer";
 import gameData from "@/game/game-data.json";
 import { validateGameData } from "@/game/game-data.schema";
 import { Spinner } from "@/components/ui/spinner";
 
 // Simulation tick interval in milliseconds
-export const TICK_MS = 16.667; // 60 FPS
-export const MAX_CATCH_UP_TICKS = 5;
+export const TICK_INTERVAL_MS = 50;
 
 // 
-export const SAMPLE_INTERVAL = 1.0;
+export const SAMPLE_INTERVAL_MS = 1000; // 1 second
 export const SAMPLE_LENGTH = 30;
 export const LOAD_FADE_MS = 400;
 
@@ -33,7 +32,7 @@ export interface GameSnapshot {
 export interface GameContextValue {
   game: Game;
   snapshot: GameSnapshot;
-  chartData: ProductionChartSeries[];
+  chartData: ProductionChartData[];
 }
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -71,7 +70,7 @@ const readSnapshot = (game: Game): GameSnapshot => ({
 export const GameProvider = ({ children }: { children: ReactNode }) => {
   const gameRef = useRef<Game | null>(null);
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
-  const [chartData, setChartData] = useState<ProductionChartSeries[]>([]);
+  const [chartData, setChartData] = useState<ProductionChartData[]>([]);
   const [isReady, setIsReady] = useState(false);
   const [initErrorMessage, setInitErrorMessage] = useState<string | null>(null);
   const [isContentVisible, setIsContentVisible] = useState(false);
@@ -84,7 +83,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       if (cancelled) return;
       try {
         const validatedGameData = validateGameData(gameData);
-        const game = new Game(validatedGameData, SAMPLE_INTERVAL, SAMPLE_LENGTH);
+        const game = new Game(validatedGameData, SAMPLE_LENGTH);
         gameRef.current = game;
         setSnapshot(readSnapshot(game));
         setIsReady(true);
@@ -105,43 +104,48 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!isReady) return;
 
+    // Set up the game tick interval
     let lastTick = performance.now();
-    let accumulatorMs = 0;
+    let tickAccumulatorMs = 0;
     const tickIntervalId = window.setInterval(() => {
       const game = gameRef.current;
       if (!game) return;
   
       const now = performance.now();
-      const frameDeltaMs = Math.min(now - lastTick, TICK_MS * MAX_CATCH_UP_TICKS);
+      const tickDeltaMs = now - lastTick;
       lastTick = now;
-      accumulatorMs += frameDeltaMs;
+      tickAccumulatorMs += tickDeltaMs;
 
-      let changed = false;
-      let steps = 0;
-      while (accumulatorMs >= TICK_MS && steps < MAX_CATCH_UP_TICKS) {
-        changed = game.tick(TICK_MS / 1000) || changed;
-        accumulatorMs -= TICK_MS;
-        steps += 1;
+      while (tickAccumulatorMs >= TICK_INTERVAL_MS) {
+        game.tick(TICK_INTERVAL_MS);
+        tickAccumulatorMs -= TICK_INTERVAL_MS;
       }
 
       setSnapshot(readSnapshot(game));
-    }, TICK_MS);
+    }, TICK_INTERVAL_MS);
 
-    let lastChartRefresh = performance.now();
-    const chartRefreshIntervalId = window.setInterval(() => {
+    // Set up the sample interval
+    // Sampling also refreshes the chart data
+    let lastSample = performance.now();
+    let sampleAccumulatorMs = 0;
+    const sampleIntervalId = window.setInterval(() => {
       const game = gameRef.current;
       if (!game) return;
       
       const now = performance.now();
-      if (now - lastChartRefresh >= SAMPLE_INTERVAL * 1000) {
-        lastChartRefresh = now;
-        setChartData(game.getProductionChartSeries());
+      const sampleDeltaMs = now - lastSample;
+      sampleAccumulatorMs += sampleDeltaMs;
+      if (sampleAccumulatorMs >= SAMPLE_INTERVAL_MS) {
+        game.sampleThroughput(now);
+        const chartData = game.getProductionChartData();
+        setChartData(chartData);
+        sampleAccumulatorMs -= SAMPLE_INTERVAL_MS;
       }
-    }, SAMPLE_INTERVAL * 1000);
+    }, SAMPLE_INTERVAL_MS);
 
     return () => {
       window.clearInterval(tickIntervalId);
-      window.clearInterval(chartRefreshIntervalId);
+      window.clearInterval(sampleIntervalId);
     };
   }, [isReady]);
 
