@@ -24,7 +24,7 @@ export const App = () => {
             <AnalyticsOverview chartData={chartData} />
           </TabsContent>
         </div>
-        <TabsList className="fixed bottom-0 z-50 md:w-md justify-center" variant="line">
+        <TabsList className="fixed bottom-0 z-50 md:w-md w-full justify-center" variant="line">
           <TabsTrigger value="production">Production</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
