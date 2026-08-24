@@ -10,7 +10,7 @@ import init, {
   Game,
   type BuildingGroupInstance,
   type InventoryEntry,
-  type ProductionChartData,
+  type ThroughputChartData,
 } from "pkg/overseer";
 import gameData from "@/game/game-data.json";
 import { validateGameData } from "@/game/game-data.schema";
@@ -32,7 +32,7 @@ export interface GameSnapshot {
 export interface GameContextValue {
   game: Game;
   snapshot: GameSnapshot;
-  chartData: ProductionChartData[];
+  chartData: ThroughputChartData[];
 }
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -70,7 +70,7 @@ const readSnapshot = (game: Game): GameSnapshot => ({
 export const GameProvider = ({ children }: { children: ReactNode }) => {
   const gameRef = useRef<Game | null>(null);
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
-  const [chartData, setChartData] = useState<ProductionChartData[]>([]);
+  const [chartData, setChartData] = useState<ThroughputChartData[]>([]);
   const [isReady, setIsReady] = useState(false);
   const [initErrorMessage, setInitErrorMessage] = useState<string | null>(null);
   const [isContentVisible, setIsContentVisible] = useState(false);
@@ -136,8 +136,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       const sampleDeltaMs = now - lastSample;
       sampleAccumulatorMs += sampleDeltaMs;
       if (sampleAccumulatorMs >= SAMPLE_INTERVAL_MS) {
-        game.sampleThroughput(now);
-        const chartData = game.getProductionChartData();
+        game.sampleThroughputData(now);
+        const chartData = game.getThroughputChartData();
         setChartData(chartData);
         sampleAccumulatorMs -= SAMPLE_INTERVAL_MS;
       }

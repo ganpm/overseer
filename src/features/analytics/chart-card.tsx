@@ -1,4 +1,4 @@
-import type { ProductionChartData } from "pkg/overseer";
+import type { ThroughputChartData } from "pkg/overseer";
 import {
   CartesianGrid,
   Area,
@@ -26,7 +26,7 @@ import {
 import { SAMPLE_INTERVAL_MS } from "@/game/game-context.tsx";
 
 export interface ChartCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  series: ProductionChartData;
+  series: ThroughputChartData;
 }
 
 const signedFormat = (number: number) => number.toLocaleString(undefined, {

@@ -74,22 +74,6 @@ pub struct BuildingGroupInstance {
     idle_count: u32,
 }
 
-#[derive(Tsify, Serialize, Deserialize, Clone, Default)]
-#[tsify(into_wasm_abi)]
-#[serde(rename_all = "camelCase")]
-pub struct ThroughputValue {
-    produced: f64,
-    consumed: f64,
-}
-
-#[derive(Tsify, Serialize, Deserialize, Clone, Default)]
-#[tsify(into_wasm_abi)]
-#[serde(rename_all = "camelCase")]
-pub struct RateHistory {
-    produced: VecDeque<f64>,
-    consumed: VecDeque<f64>,
-}
-
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(from_wasm_abi)]
 #[serde(rename_all = "camelCase")]
@@ -108,11 +92,18 @@ pub struct GameData {
     buildings: HashMap<String, Building>,
 }
 
+#[derive(Tsify, Serialize, Deserialize, Clone, Default)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
+pub struct ThroughputData {
+    produced: f64,
+    consumed: f64,
+}
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
-pub struct ThroughputPoint {
+pub struct ThroughputDataPoint {
     timestamp: f64,
     produced: f64,
     consumed: f64,
@@ -121,13 +112,13 @@ pub struct ThroughputPoint {
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
-pub struct ProductionChartData {
+pub struct ThroughputChartData {
     resource_name: String,
     current_amount: f64,
     average_production: f64,
     average_consumption: f64,
     average_rate: f64,
-    points: Vec<ThroughputPoint>,
+    points: Vec<ThroughputDataPoint>,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
@@ -153,10 +144,10 @@ pub struct Game {
     sample_interval: f64,
 
     /// Accumulator for tracking the flow of resources produced and consumed during a single tick of the game.
-    throughput_values: HashMap<String, ThroughputValue>,
+    throughput_data: HashMap<String, ThroughputData>,
 
     /// Tracker for the flow of resources over time, allowing for historical analysis of resource production and consumption.
-    throughput_tracker: HashMap<String, VecDeque<ThroughputPoint>>,
+    throughput_tracker: HashMap<String, VecDeque<ThroughputDataPoint>>,
 
     /// Lookup table for all the data loaded into the game.
     data: GameData,
@@ -209,7 +200,7 @@ impl Game {
             buildings: HashMap::new(),
             sample_length,
             sample_interval,
-            throughput_values: HashMap::new(),
+            throughput_data: HashMap::new(),
             throughput_tracker: HashMap::new(),
             data: GameData {
                 resources,
@@ -380,7 +371,7 @@ impl Game {
             changed |= Self::tick_group(
                 group,
                 inventory,
-                &mut self.throughput_values,
+                &mut self.throughput_data,
                 delta_ms,
                 has_power,
                 consumer_power_scale
@@ -390,16 +381,16 @@ impl Game {
         Ok(changed)
     }
 
-    #[wasm_bindgen(js_name = "getProductionChartData")]
-    pub fn get_production_chart_data(&self) -> Vec<ProductionChartData> {
-        let mut series = Vec::<ProductionChartData>::new();
+    #[wasm_bindgen(js_name = "getThroughputChartData")]
+    pub fn get_throughput_chart_data(&self) -> Vec<ThroughputChartData> {
+        let mut series = Vec::<ThroughputChartData>::new();
 
         for resource_name in self.data.resources.keys() {
             let points = self
                 .throughput_tracker
                 .get(resource_name)
                 .cloned()
-                .unwrap_or_else(|| vec![ThroughputPoint {
+                .unwrap_or_else(|| vec![ThroughputDataPoint {
                     timestamp: 0.0,
                     produced: 0.0,
                     consumed: 0.0,
@@ -410,7 +401,7 @@ impl Game {
             let average_consumption = points.iter().map(|p| p.consumed).sum::<f64>() / self.sample_length as f64;
             let average_rate = average_production + average_consumption;
 
-            series.push(ProductionChartData {
+            series.push(ThroughputChartData {
                 resource_name: resource_name.clone(),
                 current_amount: current_amount,
                 average_production,
@@ -423,25 +414,25 @@ impl Game {
         series
     }
 
-    #[wasm_bindgen(js_name = "sampleThroughput")]
-    pub fn sample_throughput(&mut self, timestamp: f64) {
-        let throughput_values = std::mem::take(&mut self.throughput_values);
+    #[wasm_bindgen(js_name = "sampleThroughputData")]
+    pub fn sample_throughput_data(&mut self, timestamp: f64) {
+        let throughput_data = std::mem::take(&mut self.throughput_data);
 
         for resource_name in self.data.resources.keys() {
-            let sampled = throughput_values.get(resource_name).cloned().unwrap_or_default();
+            let sampled = throughput_data.get(resource_name).cloned().unwrap_or_default();
             let tracker = self
                 .throughput_tracker
                 .entry(resource_name.clone())
                 .or_insert_with(|| {
                     (0..self.sample_length)
-                        .map(|i| ThroughputPoint {
+                        .map(|i| ThroughputDataPoint {
                             timestamp: timestamp - (((self.sample_length - 1 - i) as f64) * self.sample_interval),
                             produced: 0.0,
                             consumed: 0.0,
                         })
                         .collect()
                 }); // Initialize with default points if not present
-            tracker.push_back(ThroughputPoint {
+            tracker.push_back(ThroughputDataPoint {
                 timestamp,
                 produced: sampled.produced,
                 consumed: sampled.consumed,
@@ -449,7 +440,7 @@ impl Game {
             while tracker.len() > self.sample_length {
                 tracker.pop_front();
             }
-            self.throughput_values.insert(resource_name.clone(), ThroughputValue::default()); // Reset flow for the next tick
+            self.throughput_data.insert(resource_name.clone(), ThroughputData::default()); // Reset flow for the next tick
         }
     }
 }
@@ -458,7 +449,7 @@ impl Game {
 impl Game {
     fn consume_inputs(
         inventory: &mut HashMap<String, f64>,
-        throughput_values: &mut HashMap<String, ThroughputValue>,
+        throughput_data: &mut HashMap<String, ThroughputData>,
         inputs: &[ResourceAmount],
         count: u32,
     ) {
@@ -468,16 +459,16 @@ impl Game {
                 continue;
             }
             *inventory.entry(input.resource.clone()).or_insert(0.0) -= consumed_amount;
-            throughput_values
+            throughput_data
                 .entry(input.resource.clone())
-                .or_insert_with(ThroughputValue::default)
+                .or_insert_with(ThroughputData::default)
                 .consumed -= consumed_amount;
         }
     }
 
     fn produce_outputs(
         inventory: &mut HashMap<String, f64>,
-        throughtput_values: &mut HashMap<String, ThroughputValue>,
+        throughtput_values: &mut HashMap<String, ThroughputData>,
         outputs: &[ResourceAmount],
         count: u32,
     ) {
@@ -486,7 +477,7 @@ impl Game {
             *inventory.entry(output.resource.clone()).or_insert(0.0) += produced_amount;
             throughtput_values
                 .entry(output.resource.clone())
-                .or_insert_with(ThroughputValue::default)
+                .or_insert_with(ThroughputData::default)
                 .produced += produced_amount;
         }
     }
@@ -494,7 +485,7 @@ impl Game {
     fn tick_group(
         group: &mut BuildingGroupInstance,
         inventory: &mut HashMap<String, f64>,
-        throughput_values: &mut HashMap<String, ThroughputValue>,
+        throughput_data: &mut HashMap<String, ThroughputData>,
         delta_ms: f64,
         has_power: bool,
         consumer_power_scale: f64,
@@ -536,7 +527,7 @@ impl Game {
 
             // Cycle complete: produce outputs for buildings that were
             // actively working this cycle.
-            Self::produce_outputs(inventory, throughput_values, &group.process.outputs, group.active_count);
+            Self::produce_outputs(inventory, throughput_data, &group.process.outputs, group.active_count);
 
             // Buiildings that just finished and and those in idle count (new arrivals or previously resource-starved)
             // now compete together for the next cycle.
@@ -549,7 +540,7 @@ impl Game {
 
             if starting > 0 {
                 // Consume inputs for the buildings that will start the next cycle.
-                Self::consume_inputs(inventory, throughput_values, &group.process.inputs, starting);
+                Self::consume_inputs(inventory, throughput_data, &group.process.inputs, starting);
             }
             group.active_count = starting;
             group.idle_count = candidates.saturating_sub(starting);
@@ -560,7 +551,7 @@ impl Game {
             let starting = Self::max_affordable(inventory, &group.process.inputs, group.idle_count);
             if starting > 0 {
                 // Consume inputs for the buildings that will start the next cycle.
-                Self::consume_inputs(inventory, throughput_values, &group.process.inputs, starting);
+                Self::consume_inputs(inventory, throughput_data, &group.process.inputs, starting);
 
                 group.active_count = starting;
                 group.idle_count = group.idle_count.saturating_sub(starting);

@@ -15,17 +15,17 @@ import {
   selectSortFn,
 } from "@/components/sort-controller";
 import { filterAndSort } from "@/lib/filter-sort";
-import type { ProductionChartSeries } from "pkg/overseer";
+import type { ThroughputChartData } from "pkg/overseer";
 import { ChartCard } from "@/features/analytics/chart-card";
 
 
 const isEffectivelyZero = (value: number) => Math.abs(value) < 1e-9;
 
-const hasAnyFlowInHistory = (series: ProductionChartSeries) =>
+const hasAnyFlowInHistory = (series: ThroughputChartData) =>
   series.points.some((point) => !isEffectivelyZero(point.produced) || !isEffectivelyZero(point.consumed));
 
 export interface AnalyticsOverviewProps {
-  chartData: ProductionChartSeries[];
+  chartData: ThroughputChartData[];
 }
 
 export function AnalyticsOverview({
@@ -39,12 +39,12 @@ export function AnalyticsOverview({
 
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [sortStateCharts, setSortStateCharts] = useState<SortState<ProductionChartSeries>>({
+  const [sortStateCharts, setSortStateCharts] = useState<SortState<ThroughputChartData>>({
     field: "resourceName",
     direction: "ascending",
   });
   
-  const sortConfigCharts: SortConfig<ProductionChartSeries> = {
+  const sortConfigCharts: SortConfig<ThroughputChartData> = {
     "resourceName": {
       label: "Resource",
       sortFn: (a, b) => a.resourceName.localeCompare(b.resourceName),
