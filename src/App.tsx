@@ -15,7 +15,7 @@ export const App = () => {
 
   return (
     <div className="md:w-md w-full h-screen mx-auto">
-      <Tabs defaultValue="operations">
+      <Tabs defaultValue="production">
         <div className="relative flex-1 pb-16">
           <TabsContent value="production">
             <ProductionOverview game={game} snapshot={snapshot} />
