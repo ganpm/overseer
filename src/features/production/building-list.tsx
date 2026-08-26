@@ -65,7 +65,7 @@ export function BuildingList({
 	emptySearchMessage,
 }: BuildingListProps) {
 	return (
-		<div className="space-y-2">
+		<div className="flex flex-col gap-2">
       <div className="flex gap-1">
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button />}>
@@ -127,7 +127,7 @@ export function BuildingList({
           {emptySearchMessage}
         </p>
       ) : (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {filteredBuildings.map((buildingGroup) => (
             <BuildingCard
               key={`${buildingGroup.name}-${buildingGroup.process.name}`}

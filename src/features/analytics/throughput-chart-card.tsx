@@ -81,39 +81,39 @@ export function ThroughputChartCard({
       <span className="flex items-center gap-1 font-medium">
         {resourceName}
         {(series.averageRate > 0) ? (
-          <IncreasingIcon size={20} className="inline-block" />
+          <IncreasingIcon size={20} />
         ): (series.averageRate < 0) ? (
-          <DecreasingIcon size={20} className="inline-block" />
+          <DecreasingIcon size={20} />
         ): (
-          <NeutralIcon size={20} className="inline-block" />
+          <NeutralIcon size={20} />
         )}
       </span>
       <div className="flex gap-2 text-muted-foreground">
-        <span className="inline-flex flex-1 justify-start items-center gap-1 whitespace-nowrap">
-          <span className="inline-flex items-center gap-0">
-            <CountIcon size={16} className="inline-block" />
-            <ResourceIcon size={16} className="inline-block" />
+        <span className="flex-1 flex justify-start items-center gap-1 whitespace-nowrap">
+          <span className="flex items-center gap-0">
+            <CountIcon size={16} />
+            <ResourceIcon size={16} />
           </span>
           {currentAmountString}
         </span>
-        <span className="inline-flex flex-1 justify-start items-center gap-1 whitespace-nowrap">
-          <span className="inline-flex items-center gap-0">
-            <TotalRateIcon size={16} className="inline-block" />
-            <ResourceIcon size={16} className="inline-block" />
+        <span className="flex-1 flex justify-start items-center gap-1 whitespace-nowrap">
+          <span className="flex items-center gap-0">
+            <TotalRateIcon size={16} />
+            <ResourceIcon size={16} />
           </span>
           {averageRateString}/s
         </span>
-        <span className="inline-flex flex-1 justify-start items-center gap-1 whitespace-nowrap">
-          <span className="inline-flex items-center gap-0">
-            <ProductionRateIcon size={16} className="inline-block" />
-            <ResourceIcon size={16} className="inline-block" />
+        <span className="flex-1 flex justify-start items-center gap-1 whitespace-nowrap">
+          <span className="flex items-center gap-0">
+            <ProductionRateIcon size={16} />
+            <ResourceIcon size={16} />
           </span>
           {averageProductionString}/s
         </span>
-        <span className="inline-flex flex-1 justify-start items-center gap-1 whitespace-nowrap">
-          <span className="inline-flex items-center gap-0">
-            <ConsumptionRateIcon size={16} className="inline-block" />
-            <ResourceIcon size={16} className="inline-block" />
+        <span className="flex-1 flex justify-start items-center gap-1 whitespace-nowrap">
+          <span className="flex items-center gap-0">
+            <ConsumptionRateIcon size={16} />
+            <ResourceIcon size={16} />
           </span>
           {averageConsumptionString}/s
         </span>

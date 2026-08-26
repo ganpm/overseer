@@ -93,55 +93,55 @@ export function PowerChartCard({
       </span>
       <div className="grid grid-cols-3 gap-1 text-muted-foreground">
         {showNetCurrentPower && (
-          <span className="inline-flex flex-1 justify-start items-center gap-1 whitespace-nowrap">
-            <span className="inline-flex items-center gap-0">
-              <NetCurrentPowerIcon size={16} className="inline-block" />
-              <PowerIcon size={16} className="inline-block" />
+          <span className="flex justify-start items-center gap-1 whitespace-nowrap">
+            <span className="flex items-center gap-0">
+              <NetCurrentPowerIcon size={16} />
+              <PowerIcon size={16} />
             </span>
             {unsignedFormat(series.averageNetCurrentPower)} MW
           </span>
         )}
         {showCurrentGeneration && (
-          <span className="inline-flex flex-1 justify-start items-center gap-1 whitespace-nowrap">
-            <span className="inline-flex items-center gap-0">
-              <CurrentGenerationIcon size={16} className="inline-block" />
-              <PowerIcon size={16} className="inline-block" />
+          <span className="flex justify-start items-center gap-1 whitespace-nowrap">
+            <span className="flex items-center gap-0">
+              <CurrentGenerationIcon size={16} />
+              <PowerIcon size={16} />
             </span>
             {unsignedFormat(series.averageCurrentGeneration)} MW
           </span>
         )}
         {showCurrentConsumption && (
-          <span className="inline-flex flex-1 justify-start items-center gap-1 whitespace-nowrap">
-            <span className="inline-flex items-center gap-0">
-              <CurrentConsumptionIcon size={16} className="inline-block" />
-              <PowerIcon size={16} className="inline-block" />
+          <span className="flex justify-start items-center gap-1 whitespace-nowrap">
+            <span className="flex items-center gap-0">
+              <CurrentConsumptionIcon size={16} />
+              <PowerIcon size={16} />
             </span>
             {unsignedFormat(series.averageCurrentConsumption)} MW
           </span>
         )}
         {showNetMaximumPower && (
-          <span className="inline-flex flex-1 justify-start items-center gap-1 whitespace-nowrap">
-            <span className="inline-flex items-center gap-0">
-              <NetMaximumPowerIcon size={16} className="inline-block" />
-              <PowerIcon size={16} className="inline-block" />
+          <span className="flex justify-start items-center gap-1 whitespace-nowrap">
+            <span className="flex items-center gap-0">
+              <NetMaximumPowerIcon size={16} />
+              <PowerIcon size={16} />
             </span>
             {unsignedFormat(series.averageNetMaximumPower)} MW
           </span>
         )}
         {showMaximumGeneration && (
-          <span className="inline-flex flex-1 justify-start items-center gap-1 whitespace-nowrap">
-            <span className="inline-flex items-center gap-0">
-              <MaximumGenerationIcon size={16} className="inline-block" />
-              <PowerIcon size={16} className="inline-block" />
+          <span className="flex justify-start items-center gap-1 whitespace-nowrap">
+            <span className="flex items-center gap-0">
+              <MaximumGenerationIcon size={16} />
+              <PowerIcon size={16} />
             </span>
             {unsignedFormat(series.averageMaximumGeneration)} MW
           </span>
         )}
         {showMaximumConsumption && (
-          <span className="inline-flex flex-1 justify-start items-center gap-1 whitespace-nowrap">
-            <span className="inline-flex items-center gap-0">
-              <MaximumConsumptionIcon size={16} className="inline-block" />
-              <PowerIcon size={16} className="inline-block" />
+          <span className="flex justify-start items-center gap-1 whitespace-nowrap">
+            <span className="flex items-center gap-0">
+              <MaximumConsumptionIcon size={16} />
+              <PowerIcon size={16} />
             </span>
             {unsignedFormat(series.averageMaximumConsumption)} MW
           </span>
