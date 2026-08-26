@@ -151,3 +151,11 @@
   background-size: 1rem 100%;
   animation: progress-flow 0.8s linear infinite;
 }
+
+.scrollbar-hidden {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
