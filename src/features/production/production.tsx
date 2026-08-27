@@ -27,16 +27,8 @@ export const ProductionOverview = ({
   game,
   snapshot,
 }: ProductionOverviewProps) => {
-  const availableGenerators = Object.values(game.data.buildings).filter(
-    (building) => building.processOptions.some(
-      (name) => game.data.processes[name].powerGeneration > 0
-    )
-  );
-  const availableProducers = Object.values(game.data.buildings).filter(
-    (building) => building.processOptions.some(
-      (name) => game.data.processes[name].powerConsumption > 0
-    )
-  );
+  const availableGenerators = game.catalog.generationBuildings;
+  const availableProducers = game.catalog.productionBuildings;
   const constructedBuildings = snapshot.buildings.filter((building) => building.totalCount > 0);
   const constructedGenerators = constructedBuildings.filter((building) => building.process.powerGeneration > 0);
   const constructedProducers = constructedBuildings.filter((building) => building.process.powerConsumption > 0);
