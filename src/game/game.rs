@@ -86,6 +86,14 @@ pub struct JSONGameData {
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
+pub struct Catalog {
+    production_buildings: Vec<Building>,
+    generation_buildings: Vec<Building>,
+}
+
+#[derive(Tsify, Serialize, Deserialize, Clone)]
+#[tsify(into_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct GameData {
     resources: HashMap<String, Resource>,
     processes: HashMap<String, Process>,
@@ -194,6 +202,9 @@ pub struct Game {
 
     /// Lookup table for all the data loaded into the game.
     data: GameData,
+
+    /// Internal database for game data
+    catalog: Catalog,
 }
 
 impl Game {
@@ -221,23 +232,9 @@ impl Game {
 #[wasm_bindgen]
 impl Game {
     #[wasm_bindgen(constructor)]
-    pub fn new(data: JSONGameData, sample_length: usize, sample_interval: f64) -> Result<Game, JsValue> {
-        let resources = data
-            .resources
-            .into_iter()
-            .map(|r| (r.name.clone(), r))
-            .collect::<HashMap<_, _>>();
-        let processes = data
-            .processes
-            .into_iter()
-            .map(|p| (p.name.clone(), p))
-            .collect::<HashMap<_, _>>();
-        let buildings = data
-            .buildings
-            .into_iter()
-            .map(|b| (b.name.clone(), b))
-            .collect::<HashMap<_, _>>();
-
+    pub fn new(json_data: JSONGameData, sample_length: usize, sample_interval: f64) -> Result<Game, JsValue> {
+        let data = Self::create_data_from(&json_data);
+        let catalog = Self::create_catalog_from(&json_data, &data);
         Ok(Game {
             inventory: HashMap::new(),
             buildings: HashMap::new(),
@@ -247,11 +244,8 @@ impl Game {
             throughput_tracker: HashMap::new(),
             power_data: PowerData::default(),
             power_tracker: None,
-            data: GameData {
-                resources,
-                processes,
-                buildings,
-            },
+            data,
+            catalog,
         })
     }
 
@@ -274,6 +268,11 @@ impl Game {
     #[wasm_bindgen(getter)]
     pub fn data(&self) -> GameData {
         self.data.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn catalog(&self) -> Catalog {
+        self.catalog.clone()
     }
 
     #[wasm_bindgen(js_name = "addBuilding")]
@@ -569,6 +568,57 @@ impl Game {
 
 
 impl Game {
+    fn create_data_from(json_data: &JSONGameData) -> GameData {
+        let resources = json_data
+            .resources
+            .iter()
+            .map(|r| (r.name.clone(), r.clone()))
+            .collect::<HashMap<_, _>>();
+        let processes = json_data
+            .processes
+            .iter()
+            .map(|p| (p.name.clone(), p.clone()))
+            .collect::<HashMap<_, _>>();
+        let buildings = json_data
+            .buildings
+            .iter()
+            .map(|b| (b.name.clone(), b.clone()))
+            .collect::<HashMap<_, _>>();
+        
+        GameData {
+            resources,
+            processes,
+            buildings,
+        }
+    }
+
+    fn create_catalog_from(json_data: &JSONGameData, data: &GameData) -> Catalog {
+        let production_buildings = json_data.buildings.iter()
+            .filter(|&b| b.process_options.iter()
+                .any(|p| match data.processes.get(p) {
+                    Some(proc) => proc.power_consumption > 0.0,
+                    None => false
+                })
+            )
+            .map(|b| b.clone())
+            .collect();
+
+        let generation_buildings = json_data.buildings.iter()
+            .filter(|&b| b.process_options.iter()
+                .any(|p| match data.processes.get(p) {
+                    Some(proc) => proc.power_generation > 0.0,
+                    None => false
+                })
+            )
+            .map(|b| b.clone())
+            .collect();
+
+        Catalog {
+            production_buildings,
+            generation_buildings,
+        }
+    }
+
     fn consume_inputs(
         inventory: &mut HashMap<String, f64>,
         throughput_data: &mut HashMap<String, ThroughputData>,
