@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { PowerChartData } from "pkg/overseer";
 import {
   CartesianGrid,
@@ -22,7 +23,17 @@ import {
   ChevronUp as CurrentGenerationIcon,
   ChevronsDownUp as NetCurrentPowerIcon,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { SAMPLE_INTERVAL_MS } from "@/game/game-context.tsx";
+
+interface Field {
+  key: keyof PowerChartData;
+  label: string;
+  icon: React.ReactNode;
+  value: number;
+  checked: boolean;
+  setChecked: () => void;
+}
 
 const config = {
   maximumConsumption: {
@@ -34,27 +45,27 @@ const config = {
     color: "oklch(0.80 0.12 153)",
   },
   netMaximumPower: {
-    label: "Net Maximum Power",
+    label: "Maximum Net Power",
     color: "oklch(0.72 0.14 285)",
   },
   currentConsumption: {
-    label: "Current Consumption",
+    label: "Consumption",
     color: "oklch(0.62 0.19 25)",
   },
   currentGeneration: {
-    label: "Current Generation",
+    label: "Generation",
     color: "oklch(0.70 0.16 153)",
   },
   netCurrentPower: {
-    label: "Net Current Power",
+    label: "Net Power",
     color: "oklch(0.62 0.19 285)",
   },
 } satisfies ChartConfig;
 
-const isEffectivelyZero = (value: number) => Math.abs(value) < 1e-9;
 
 const unsignedFormat = (number: number) => number.toLocaleString(undefined, {
-  maximumFractionDigits: 2,
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
   signDisplay: "never",
 })
 
@@ -79,73 +90,89 @@ export function PowerChartCard({
     return tick;
   }
 
-  const showMaximumConsumption = !isEffectivelyZero(series.averageMaximumConsumption) || series.points.some((point) => !isEffectivelyZero(point.maximumConsumption));
-  const showMaximumGeneration = !isEffectivelyZero(series.averageMaximumGeneration) || series.points.some((point) => !isEffectivelyZero(point.maximumGeneration));
-  const showCurrentConsumption = !isEffectivelyZero(series.averageCurrentConsumption) || series.points.some((point) => !isEffectivelyZero(point.currentConsumption));
-  const showCurrentGeneration = !isEffectivelyZero(series.averageCurrentGeneration) || series.points.some((point) => !isEffectivelyZero(point.currentGeneration));
-  const showNetMaximumPower = !isEffectivelyZero(series.averageNetMaximumPower) || series.points.some((point) => !isEffectivelyZero(point.netMaximumPower));
-  const showNetCurrentPower = !isEffectivelyZero(series.averageNetCurrentPower) || series.points.some((point) => !isEffectivelyZero(point.netCurrentPower));
+  const [showMaximumConsumption, setShowMaximumConsumption] = useState<boolean>(false);
+  const [showMaximumGeneration, setShowMaximumGeneration] = useState<boolean>(false);
+  const [showNetMaximumPower, setShowNetMaximumPower] = useState<boolean>(false);
+  const [showCurrentConsumption, setShowCurrentConsumption] = useState<boolean>(true);
+  const [showCurrentGeneration, setShowCurrentGeneration] = useState<boolean>(true);
+  const [showNetCurrentPower, setShowNetCurrentPower] = useState<boolean>(true);
+
+  const fields: Field[] = [
+    {
+      key: "averageCurrentConsumption",
+      label: "Consumption",
+      icon: <CurrentConsumptionIcon size={16} />,
+      value: series.averageCurrentConsumption,
+      checked: showCurrentConsumption,
+      setChecked: () => setShowCurrentConsumption((prev) => !prev),
+    },
+    {
+      key: "averageCurrentGeneration",
+      label: "Generation",
+      icon: <CurrentGenerationIcon size={16} />,
+      value: series.averageCurrentGeneration,
+      checked: showCurrentGeneration,
+      setChecked: () => setShowCurrentGeneration((prev) => !prev),
+    },
+    {
+      key: "averageNetCurrentPower",
+      label: "Net Power",
+      icon: <NetCurrentPowerIcon size={16} />,
+      value: series.averageNetCurrentPower,
+      checked: showNetCurrentPower,
+      setChecked: () => setShowNetCurrentPower((prev) => !prev),
+    },
+    {
+      key: "averageMaximumConsumption",
+      label: "Max Consumption",
+      icon: <MaximumConsumptionIcon size={16} />,
+      value: series.averageMaximumConsumption,
+      checked: showMaximumConsumption,
+      setChecked: () => setShowMaximumConsumption((prev) => !prev),
+    },
+    {
+      key: "averageMaximumGeneration",
+      label: "Max Generation",
+      icon: <MaximumGenerationIcon size={16} />,
+      value: series.averageMaximumGeneration,
+      checked: showMaximumGeneration,
+      setChecked: () => setShowMaximumGeneration((prev) => !prev)
+    },
+    {
+      key: "averageNetMaximumPower",
+      label: "Net Max Power",
+      icon: <NetMaximumPowerIcon size={16} />,
+      value: series.averageNetMaximumPower,
+      checked: showNetMaximumPower,
+      setChecked: () => setShowNetMaximumPower((prev) => !prev)
+    },
+  ];
 
   return (
-    <div className="flex flex-col gap-1 border rounded-md p-3" {...props}>
-      <span className="flex items-center gap-1 font-medium">
-        {series.name}
-      </span>
-      <div className="grid grid-cols-3 gap-1 text-muted-foreground">
-        {showNetCurrentPower && (
-          <span className="flex justify-start items-center gap-1 whitespace-nowrap">
-            <span className="flex items-center gap-0">
-              <NetCurrentPowerIcon size={16} />
-              <PowerIcon size={16} />
-            </span>
-            {unsignedFormat(series.averageNetCurrentPower)} MW
-          </span>
-        )}
-        {showCurrentGeneration && (
-          <span className="flex justify-start items-center gap-1 whitespace-nowrap">
-            <span className="flex items-center gap-0">
-              <CurrentGenerationIcon size={16} />
-              <PowerIcon size={16} />
-            </span>
-            {unsignedFormat(series.averageCurrentGeneration)} MW
-          </span>
-        )}
-        {showCurrentConsumption && (
-          <span className="flex justify-start items-center gap-1 whitespace-nowrap">
-            <span className="flex items-center gap-0">
-              <CurrentConsumptionIcon size={16} />
-              <PowerIcon size={16} />
-            </span>
-            {unsignedFormat(series.averageCurrentConsumption)} MW
-          </span>
-        )}
-        {showNetMaximumPower && (
-          <span className="flex justify-start items-center gap-1 whitespace-nowrap">
-            <span className="flex items-center gap-0">
-              <NetMaximumPowerIcon size={16} />
-              <PowerIcon size={16} />
-            </span>
-            {unsignedFormat(series.averageNetMaximumPower)} MW
-          </span>
-        )}
-        {showMaximumGeneration && (
-          <span className="flex justify-start items-center gap-1 whitespace-nowrap">
-            <span className="flex items-center gap-0">
-              <MaximumGenerationIcon size={16} />
-              <PowerIcon size={16} />
-            </span>
-            {unsignedFormat(series.averageMaximumGeneration)} MW
-          </span>
-        )}
-        {showMaximumConsumption && (
-          <span className="flex justify-start items-center gap-1 whitespace-nowrap">
-            <span className="flex items-center gap-0">
-              <MaximumConsumptionIcon size={16} />
-              <PowerIcon size={16} />
-            </span>
-            {unsignedFormat(series.averageMaximumConsumption)} MW
-          </span>
-        )}
+    <div className="flex flex-col gap-3 border rounded-md p-3" {...props}>
+      <div className="flex flex-col gap-1">
+        {fields.map(({ key, label, icon, value, checked, setChecked}) => (
+          <div
+            key={key}
+            className={cn(
+              "flex cursor-pointer",
+              checked ? "text-foreground" : "text-muted-foreground",
+              checked ? "hover:text-muted-foreground" : "hover:text-foreground"
+            )}
+            onClick={setChecked}
+          >
+            <div className="flex-1 flex items-center gap-2">
+              <span className="flex items-center gap-0">
+                {icon}
+                <PowerIcon size={16} />
+              </span>
+              {label}
+            </div>
+            <div className="flex-1 flex justify-end items-center mr-5">
+              {unsignedFormat(value)} MW
+            </div>
+          </div>
+        ))}
       </div>
       <ChartContainer config={config} className="h-30 w-full">
         <LineChart

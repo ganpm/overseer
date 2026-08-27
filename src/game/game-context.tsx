@@ -34,7 +34,7 @@ export interface GameContextValue {
   game: Game;
   snapshot: GameSnapshot;
   throughputChartData: ThroughputChartData[];
-  powerChartData: PowerChartData[];
+  powerChartData: PowerChartData | null;
 }
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -73,7 +73,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const gameRef = useRef<Game | null>(null);
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
   const [throughputChartData, setThroughputChartData] = useState<ThroughputChartData[]>([]);
-  const [powerChartData, setPowerChartData] = useState<PowerChartData[]>([]);
+  const [powerChartData, setPowerChartData] = useState<PowerChartData | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [initErrorMessage, setInitErrorMessage] = useState<string | null>(null);
   const [isContentVisible, setIsContentVisible] = useState(false);

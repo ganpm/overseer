@@ -17,7 +17,7 @@ import type {
   PowerChartData,
 } from "pkg/overseer";
 import { ThroughputList } from "@/features/analytics/throughput-list";
-import { PowerList } from "@/features/analytics/power-list";
+import { PowerChartCard } from "@/features/analytics/power-chart-card";
 
 
 const isEffectivelyZero = (value: number) => Math.abs(value) < 1e-9;
@@ -27,7 +27,7 @@ const hasAnyFlowInHistory = (series: ThroughputChartData) =>
 
 export interface AnalyticsOverviewProps {
   throughputChartData: ThroughputChartData[];
-  powerChartData: PowerChartData[];
+  powerChartData: PowerChartData | null;
 }
 
 export function AnalyticsOverview({
@@ -67,25 +67,6 @@ export function AnalyticsOverview({
     sortFn: selectSortFn(sortConfigThroughput, sortStateThroughput),
   });
 
-  const [searchQueryPower, setSearchQueryPower] = useState("");
-  const [sortStatePower, setSortStatePower] = useState<SortState<PowerChartData>>({
-    field: "name",
-    direction: "ascending",
-  });
-  const sortConfigPower: SortConfig<PowerChartData> = {
-    "name": {
-      label: "Name",
-      sortFn: (a, b) => a.name.localeCompare(b.name),
-    },
-  };
-  const queriedPowerCharts = filterAndSort(powerChartData, {
-    query: searchQueryPower,
-    filters: [
-      (series) => series.name,
-    ],
-    sortFn: selectSortFn(sortConfigPower, sortStatePower),
-  });
-
   return (
     <div className="flex flex-col gap-2 mx-4 mt-4 mb-16">
       <span className="font-heading text-base font-medium">
@@ -110,15 +91,9 @@ export function AnalyticsOverview({
         <AccordionItem value="power">
           <AccordionTrigger>Power</AccordionTrigger>
           <AccordionContent>
-            <PowerList
-              searchQuery={searchQueryPower}
-              setSearchQuery={setSearchQueryPower}
-              sortStateCharts={sortStatePower}
-              setSortStateCharts={setSortStatePower}
-              sortConfigCharts={sortConfigPower}
-              queriedCharts={queriedPowerCharts}
-              chartData={powerChartData}
-            />
+            {powerChartData && (
+              <PowerChartCard series={powerChartData} />
+            )}
           </AccordionContent>
         </AccordionItem>
       </Accordion>

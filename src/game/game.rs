@@ -503,7 +503,7 @@ impl Game {
     }
 
     #[wasm_bindgen(js_name = "getPowerChartData")]
-    pub fn get_power_chart_data(&self) -> Vec<PowerChartData> {
+    pub fn get_power_chart_data(&self) -> PowerChartData {
         let points: Vec<PowerDataPoint> = self.power_tracker.clone().unwrap_or_else(|| {
             (0..self.sample_length)
                 .map(|_| PowerDataPoint {
@@ -524,110 +524,16 @@ impl Game {
         let average_current_generation = points.iter().map(|p| p.current_generation).sum::<f64>() / self.sample_length as f64;
         let average_net_current_power = points.iter().map(|p| p.net_current_power).sum::<f64>() / self.sample_length as f64;
 
-        let charts = vec![
-            PowerChartData {
-                name: "Power".into(),
-                average_maximum_consumption,
-                average_maximum_generation,
-                average_net_maximum_power,
-                average_current_consumption,
-                average_current_generation,
-                average_net_current_power,
-                points: points.iter().cloned().collect(),
-            },
-            PowerChartData {
-                name: "Actual Power".into(),
-                average_maximum_consumption: 0.0,
-                average_maximum_generation: 0.0,
-                average_net_maximum_power: 0.0,
-                average_current_consumption,
-                average_current_generation,
-                average_net_current_power,
-                points: points.iter().map(|p| PowerDataPoint {
-                    timestamp: p.timestamp,
-                    maximum_consumption: 0.0,
-                    maximum_generation: 0.0,
-                    net_maximum_power: 0.0,
-                    current_consumption: p.current_consumption,
-                    current_generation: p.current_generation,
-                    net_current_power: p.net_current_power,
-                }).collect(),
-            },
-            PowerChartData {
-                name: "Theoretical Power".into(),
-                average_maximum_consumption,
-                average_maximum_generation,
-                average_net_maximum_power,
-                average_current_consumption: 0.0,
-                average_current_generation: 0.0,
-                average_net_current_power: 0.0,
-                points: points.iter().map(|p| PowerDataPoint {
-                    timestamp: p.timestamp,
-                    maximum_consumption: p.maximum_consumption,
-                    maximum_generation: p.maximum_generation,
-                    net_maximum_power: p.net_maximum_power,
-                    current_consumption: 0.0,
-                    current_generation: 0.0,
-                    net_current_power: 0.0,
-                }).collect(),
-            },
-            PowerChartData {
-                name: "Net Power".into(),
-                average_maximum_consumption: 0.0,
-                average_maximum_generation: 0.0,
-                average_net_maximum_power,
-                average_current_consumption: 0.0,
-                average_current_generation: 0.0,
-                average_net_current_power,
-                points: points.iter().map(|p| PowerDataPoint {
-                    timestamp: p.timestamp,
-                    maximum_consumption: 0.0,
-                    maximum_generation: 0.0,
-                    net_maximum_power: p.net_maximum_power,
-                    current_consumption: 0.0,
-                    current_generation: 0.0,
-                    net_current_power: p.net_current_power,
-                }).collect(),
-            },
-            PowerChartData {
-                name: "Consumed Power".into(),
-                average_maximum_consumption,
-                average_maximum_generation: 0.0,
-                average_net_maximum_power: 0.0,
-                average_current_consumption,
-                average_current_generation: 0.0,
-                average_net_current_power: 0.0,
-                points: points.iter().map(|p| PowerDataPoint {
-                    timestamp: p.timestamp,
-                    maximum_consumption: p.maximum_consumption,
-                    maximum_generation: 0.0,
-                    net_maximum_power: 0.0,
-                    current_consumption: p.current_consumption,
-                    current_generation: 0.0,
-                    net_current_power: 0.0,
-                }).collect(),
-            },
-            PowerChartData {
-                name: "Generated Power".into(),
-                average_maximum_consumption: 0.0,
-                average_maximum_generation,
-                average_net_maximum_power: 0.0,
-                average_current_consumption: 0.0,
-                average_current_generation,
-                average_net_current_power: 0.0,
-                points: points.iter().map(|p| PowerDataPoint {
-                    timestamp: p.timestamp,
-                    maximum_consumption: 0.0,
-                    maximum_generation: p.maximum_generation,
-                    net_maximum_power: 0.0,
-                    current_consumption: 0.0,
-                    current_generation: p.current_generation,
-                    net_current_power: 0.0,
-                }).collect(),
-            }
-        ];
-
-        return charts;
+        PowerChartData {
+            name: "Power Information".into(),
+            average_maximum_consumption,
+            average_maximum_generation,
+            average_net_maximum_power,
+            average_current_consumption,
+            average_current_generation,
+            average_net_current_power,
+            points: points.iter().cloned().collect(),
+        }
     }
 
     #[wasm_bindgen(js_name = "samplePowerData")]
