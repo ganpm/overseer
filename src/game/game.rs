@@ -72,6 +72,8 @@ pub struct BuildingGroupInstance {
     /// Some buildings will not be active if there are not enough resources to run the process.
     active_count: u32,
     idle_count: u32,
+    cycle_speed_mult: f64,
+    enabled: bool,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
@@ -354,6 +356,8 @@ impl Game {
                         total_count: buildable,
                         active_count: 0,
                         idle_count: buildable,
+                        cycle_speed_mult: 1.0,
+                        enabled: true,
                     });
                 }
             }
@@ -376,6 +380,36 @@ impl Game {
                 }
             }
         }
+
+        Ok(())
+    }
+
+    #[wasm_bindgen(js_name = "setBuildingCycleSpeed")]
+    pub fn set_building_cycle_speed(
+        &mut self,
+        building_name: &str,
+        process_name: &str,
+        cycle_speed_mult: f64
+    ) -> Result<(), JsValue> {
+
+        self.buildings
+            .entry((building_name.to_string(), process_name.to_string()))
+            .and_modify(|bgi| bgi.cycle_speed_mult = cycle_speed_mult);
+
+        Ok(())
+    }
+
+    #[wasm_bindgen(js_name = "setBuildingEnabled")]
+    pub fn set_building_enabled(
+        &mut self,
+        building_name: &str,
+        process_name: &str,
+        enabled: bool
+    ) -> Result<(), JsValue> {
+
+        self.buildings
+            .entry((building_name.to_string(), process_name.to_string()))
+            .and_modify(|bgi| bgi.enabled = enabled);
 
         Ok(())
     }
@@ -667,7 +701,7 @@ impl Game {
 
         // Anything mid-cycle stops and loses progress, dropping back to idle.
         // Buildings that need power cannot do anything else this tick.
-        if needs_power && !is_powered {
+        if !group.enabled || (needs_power && !is_powered) {
             if group.active_count > 0 {
                 group.idle_count = group.idle_count.saturating_add(group.active_count);
                 group.active_count = 0;
@@ -688,7 +722,7 @@ impl Game {
         group.process.efficiency = efficiency;
 
         if group.active_count > 0 {
-            let time_advanced = delta_ms * efficiency;
+            let time_advanced = delta_ms * efficiency * group.cycle_speed_mult;
             let next_elapsed = group.process.elapsed + time_advanced;
 
             // Cycle not complete: just increment elapsed cycle time and return.
@@ -701,7 +735,7 @@ impl Game {
             // actively working this cycle.
             Self::produce_outputs(inventory, throughput_data, &group.process.outputs, group.active_count);
 
-            // Buiildings that just finished and and those in idle count (new arrivals or previously resource-starved)
+            // Buildings that just finished and and those in idle count (new arrivals or previously resource-starved)
             // now compete together for the next cycle.
             let candidates = group.active_count + group.idle_count;
             let starting = if is_powered {
