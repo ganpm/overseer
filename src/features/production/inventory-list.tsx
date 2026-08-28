@@ -10,9 +10,9 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import {
-	SortController,
-	type SortState,
-	type SortConfig,
+  SortController,
+  type SortState,
+  type SortConfig,
 } from "@/components/sort-controller";
 import { Search } from "lucide-react";
 import type { InventoryEntry } from "pkg/overseer";
