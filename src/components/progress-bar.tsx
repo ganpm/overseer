@@ -15,6 +15,7 @@ function ContinuousProgressBar({
       ].join(" ")}
       style={{
         width: "100%",
+        animationPlayState: active ? "running" : "paused",
       }}
     />
   );
