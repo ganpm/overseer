@@ -1,71 +1,71 @@
 import type { BuildingGroupInstance } from "pkg/overseer";
 import { Button } from "@/components/ui/button";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuGroup,
-	DropdownMenuSub,
-	DropdownMenuSubTrigger,
-	DropdownMenuPortal,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSubContent,
-	DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSubContent,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-	InputGroup,
-	InputGroupAddon,
-	InputGroupInput,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
 } from "@/components/ui/input-group";
 import {
-	SortController,
-	type SortState,
-	type SortConfig,
+  SortController,
+  type SortState,
+  type SortConfig,
 } from "@/components/sort-controller";
 import {
-	Search,
-	Hammer as Build,
+  Search,
+  Hammer as Build,
 } from "lucide-react";
 import { BuildingCard } from "@/features/production/building-card";
 
 interface AvailableBuilding {
-	name: string;
-	processOptions: string[];
+  name: string;
+  processOptions: string[];
 }
 
 export interface BuildingListProps {
-	availableBuildings: AvailableBuilding[];
-	builtBuildings: BuildingGroupInstance[];
-	filteredBuildings: BuildingGroupInstance[];
-	sectionLabel: string;
-	searchQuery: string;
-	onSearchQueryChange: (value: string) => void;
-	sortState: SortState<BuildingGroupInstance>;
-	onSortStateChange: (next: SortState<BuildingGroupInstance>) => void;
-	sortConfig: SortConfig<BuildingGroupInstance>;
-	onBuild: (buildingName: string, processName: string) => void;
-	onChangeCount: (buildingName: string, processName: string, delta: number) => void;
-	emptyBuiltMessage: string;
-	emptySearchMessage: string;
+  availableBuildings: AvailableBuilding[];
+  builtBuildings: BuildingGroupInstance[];
+  filteredBuildings: BuildingGroupInstance[];
+  sectionLabel: string;
+  searchQuery: string;
+  onSearchQueryChange: (value: string) => void;
+  sortState: SortState<BuildingGroupInstance>;
+  onSortStateChange: (next: SortState<BuildingGroupInstance>) => void;
+  sortConfig: SortConfig<BuildingGroupInstance>;
+  onBuild: (buildingName: string, processName: string) => void;
+  onChangeCount: (buildingName: string, processName: string, delta: number) => void;
+  emptyBuiltMessage: string;
+  emptySearchMessage: string;
 }
 
 export function BuildingList({
-	availableBuildings,
-	builtBuildings,
-	filteredBuildings,
-	sectionLabel,
-	searchQuery,
-	onSearchQueryChange,
-	sortState,
-	onSortStateChange,
-	sortConfig,
-	onBuild,
-	onChangeCount,
-	emptyBuiltMessage,
-	emptySearchMessage,
+  availableBuildings,
+  builtBuildings,
+  filteredBuildings,
+  sectionLabel,
+  searchQuery,
+  onSearchQueryChange,
+  sortState,
+  onSortStateChange,
+  sortConfig,
+  onBuild,
+  onChangeCount,
+  emptyBuiltMessage,
+  emptySearchMessage,
 }: BuildingListProps) {
-	return (
-		<div className="flex flex-col gap-2">
+  return (
+    <div className="flex flex-col gap-2">
       <div className="flex gap-1">
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button />}>
@@ -139,5 +139,5 @@ export function BuildingList({
         </div>
       )}
     </div>
-	);
+  );
 }
