@@ -17,6 +17,7 @@ import gameData from "@/game/game-data.json";
 import { validateGameData } from "@/game/game-data.schema";
 import { Spinner } from "@/components/ui/spinner";
 
+
 // Simulation tick interval in milliseconds
 export const TICK_INTERVAL_MS = 50;
 
@@ -34,7 +35,7 @@ export interface GameContextValue {
   game: Game;
   snapshot: GameSnapshot;
   throughputChartData: ThroughputChartData[];
-  powerChartData: PowerChartData | null;
+  powerChartData: PowerChartData;
 }
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -89,7 +90,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         const game = new Game(validatedGameData, SAMPLE_LENGTH, SAMPLE_INTERVAL_MS);
         gameRef.current = game;
         setSnapshot(readSnapshot(game));
+
+        let now = performance.now();
+        game.sampleThroughputData(now);
+        game.samplePowerData(now);
+        setThroughputChartData(game.getThroughputChartData());
+        setPowerChartData(game.getPowerChartData());
+
         setIsReady(true);
+
       } catch (error) {
         if (cancelled) return;
         setInitErrorMessage(getErrorMessage(error));
@@ -181,7 +190,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     );
   }
 
-  if (!snapshot || !gameRef.current) {
+  if (!gameRef.current || !snapshot || !powerChartData) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
         <div className="flex items-center gap-2 text-muted-foreground" aria-live="polite" aria-busy="true">
