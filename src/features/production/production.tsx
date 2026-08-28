@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { Game } from "pkg/overseer";
 import type { GameSnapshot } from "@/game/game-context.tsx";
-import { Separator } from "@/components/ui/separator";
 import {
   Accordion,
   AccordionContent,
@@ -110,66 +109,60 @@ export const ProductionOverview = ({
   });
 
   return (
-    <div className="flex flex-col gap-2 mt-4 mx-4 mb-16">
-      <span className="font-heading text-base font-medium">
-        Production
-      </span>
-      <Separator />
-      <Accordion multiple defaultValue={["power-generators", "production-buildings", "inventory"]}>
-        <AccordionItem value="power-generators">
-          <AccordionTrigger>Power Generators ({constructedGenerators.length})</AccordionTrigger>
-          <AccordionContent>
-            <BuildingList
-              availableBuildings={availableGenerators}
-              builtBuildings={constructedGenerators}
-              filteredBuildings={generators}
-              sectionLabel="Power Generators"
-              searchQuery={searchQueryGenerator}
-              onSearchQueryChange={setSearchQueryGenerator}
-              sortState={sortStateGenerator}
-              onSortStateChange={setSortStateGenerator}
-              sortConfig={sortConfigBuildings}
-              onBuild={(buildingName, processName) => game.addBuilding(buildingName, processName, 1)}
-              onChangeCount={(buildingName, processName, delta) => game.addBuilding(buildingName, processName, delta)}
-              emptyBuiltMessage="No power generators built."
-              emptySearchMessage="No power generators match the search query."
-            />
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="production-buildings">
-          <AccordionTrigger>Production Buildings ({constructedProducers.length})</AccordionTrigger>
-          <AccordionContent>
-            <BuildingList
-              availableBuildings={availableProducers}
-              builtBuildings={constructedProducers}
-              filteredBuildings={producers}
-              sectionLabel="Production Buildings"
-              searchQuery={searchQueryProducer}
-              onSearchQueryChange={setSearchQueryProducer}
-              sortState={sortStateProducer}
-              onSortStateChange={setSortStateProducer}
-              sortConfig={sortConfigBuildings}
-              onBuild={(buildingName, processName) => game.addBuilding(buildingName, processName, 1)}
-              onChangeCount={(buildingName, processName, delta) => game.addBuilding(buildingName, processName, delta)}
-              emptyBuiltMessage="No production buildings built."
-              emptySearchMessage="No production buildings match the search query."
-            />
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="inventory">
-          <AccordionTrigger>Inventory ({inventory.length})</AccordionTrigger>
-          <AccordionContent>
-            <InventoryList
-              inventory={inventory}
-              searchQueryInventory={searchQueryInventory}
-              setSearchQueryInventory={setSearchQueryInventory}
-              sortStateInventory={sortStateInventory}
-              setSortStateInventory={setSortStateInventory}
-              sortConfigInventory={sortConfigInventory}
-            />
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-    </div>
+    <Accordion multiple defaultValue={["power-generators", "production-buildings", "inventory"]}>
+      <AccordionItem value="power-generators">
+        <AccordionTrigger>Power Generators ({constructedGenerators.length})</AccordionTrigger>
+        <AccordionContent>
+          <BuildingList
+            availableBuildings={availableGenerators}
+            builtBuildings={constructedGenerators}
+            filteredBuildings={generators}
+            sectionLabel="Power Generators"
+            searchQuery={searchQueryGenerator}
+            onSearchQueryChange={setSearchQueryGenerator}
+            sortState={sortStateGenerator}
+            onSortStateChange={setSortStateGenerator}
+            sortConfig={sortConfigBuildings}
+            onBuild={(buildingName, processName) => game.addBuilding(buildingName, processName, 1)}
+            onChangeCount={(buildingName, processName, delta) => game.addBuilding(buildingName, processName, delta)}
+            emptyBuiltMessage="No power generators built."
+            emptySearchMessage="No power generators match the search query."
+          />
+        </AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="production-buildings">
+        <AccordionTrigger>Production Buildings ({constructedProducers.length})</AccordionTrigger>
+        <AccordionContent>
+          <BuildingList
+            availableBuildings={availableProducers}
+            builtBuildings={constructedProducers}
+            filteredBuildings={producers}
+            sectionLabel="Production Buildings"
+            searchQuery={searchQueryProducer}
+            onSearchQueryChange={setSearchQueryProducer}
+            sortState={sortStateProducer}
+            onSortStateChange={setSortStateProducer}
+            sortConfig={sortConfigBuildings}
+            onBuild={(buildingName, processName) => game.addBuilding(buildingName, processName, 1)}
+            onChangeCount={(buildingName, processName, delta) => game.addBuilding(buildingName, processName, delta)}
+            emptyBuiltMessage="No production buildings built."
+            emptySearchMessage="No production buildings match the search query."
+          />
+        </AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="inventory">
+        <AccordionTrigger>Inventory ({inventory.length})</AccordionTrigger>
+        <AccordionContent>
+          <InventoryList
+            inventory={inventory}
+            searchQueryInventory={searchQueryInventory}
+            setSearchQueryInventory={setSearchQueryInventory}
+            sortStateInventory={sortStateInventory}
+            setSortStateInventory={setSortStateInventory}
+            sortConfigInventory={sortConfigInventory}
+          />
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 };

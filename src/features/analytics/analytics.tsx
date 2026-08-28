@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Separator } from "@/components/ui/separator";
 import {
   Accordion,
   AccordionContent,
@@ -68,35 +67,29 @@ export function AnalyticsOverview({
   });
 
   return (
-    <div className="flex flex-col gap-2 mx-4 mt-4 mb-16">
-      <span className="font-heading text-base font-medium">
-        Analytics
-      </span>
-      <Separator />
-      <Accordion multiple defaultValue={["throughput", "power"]}>
-        <AccordionItem value="throughput">
-          <AccordionTrigger>Throughput ({nonzeroThroughputChartData.length})</AccordionTrigger>
-          <AccordionContent>
-            <ThroughputList
-              searchQuery={searchQueryThroughput}
-              setSearchQuery={setSearchQueryThroughput}
-              sortStateCharts={sortStateThroughput}
-              setSortStateCharts={setSortStateThroughput}
-              sortConfigCharts={sortConfigThroughput}
-              queriedCharts={queriedThroughputCharts}
-              chartData={nonzeroThroughputChartData}
-            />
-          </AccordionContent>
-        </AccordionItem>
-        <AccordionItem value="power">
-          <AccordionTrigger>Power</AccordionTrigger>
-          <AccordionContent>
-            {powerChartData && (
-              <PowerChartCard series={powerChartData} />
-            )}
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-    </div>
+    <Accordion multiple defaultValue={["throughput", "power"]}>
+      <AccordionItem value="throughput">
+        <AccordionTrigger>Throughput ({nonzeroThroughputChartData.length})</AccordionTrigger>
+        <AccordionContent>
+          <ThroughputList
+            searchQuery={searchQueryThroughput}
+            setSearchQuery={setSearchQueryThroughput}
+            sortStateCharts={sortStateThroughput}
+            setSortStateCharts={setSortStateThroughput}
+            sortConfigCharts={sortConfigThroughput}
+            queriedCharts={queriedThroughputCharts}
+            chartData={nonzeroThroughputChartData}
+          />
+        </AccordionContent>
+      </AccordionItem>
+      <AccordionItem value="power">
+        <AccordionTrigger>Power</AccordionTrigger>
+        <AccordionContent>
+          {powerChartData && (
+            <PowerChartCard series={powerChartData} />
+          )}
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   )
 }
