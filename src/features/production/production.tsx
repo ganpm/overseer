@@ -125,6 +125,7 @@ export const ProductionOverview = ({
             sortConfig={sortConfigBuildings}
             onBuild={(buildingName, processName) => game.addBuilding(buildingName, processName, 1)}
             onChangeCount={(buildingName, processName, delta) => game.addBuilding(buildingName, processName, delta)}
+            onSetEnabled={(buildingName, processName, enabled) => game.setBuildingEnabled(buildingName, processName, enabled)}
             emptyBuiltMessage="No power generators built."
             emptySearchMessage="No power generators match the search query."
           />
@@ -145,6 +146,7 @@ export const ProductionOverview = ({
             sortConfig={sortConfigBuildings}
             onBuild={(buildingName, processName) => game.addBuilding(buildingName, processName, 1)}
             onChangeCount={(buildingName, processName, delta) => game.addBuilding(buildingName, processName, delta)}
+            onSetEnabled={(buildingName, processName, enabled) => game.setBuildingEnabled(buildingName, processName, enabled)}
             emptyBuiltMessage="No production buildings built."
             emptySearchMessage="No production buildings match the search query."
           />

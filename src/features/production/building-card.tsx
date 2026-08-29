@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import {
   Plus as PlusIcon,
   Minus as MinusIcon,
+  Power as PowerIcon,
 } from "lucide-react";
 import { ProgressBar } from "@/components/progress-bar";
 import { ProcessCard } from "@/features/production/process-card";
@@ -12,15 +13,17 @@ export interface BuildingCardProps extends React.HTMLAttributes<HTMLDivElement> 
   buildingGroup: BuildingGroupInstance;
   increaseCount: () => void;
   decreaseCount: () => void;
+  setEnabled: () => void;
 }
 
 export function BuildingCard({
   buildingGroup,
   increaseCount,
   decreaseCount,
+  setEnabled,
   ...props
 }: BuildingCardProps) {
-  const { name, totalCount, activeCount, idleCount, process } = buildingGroup;
+  const { name, totalCount, activeCount, idleCount, process, enabled } = buildingGroup;
   return (
     <div className="flex flex-col gap-3 border rounded-md p-3 w-full" {...props}>
       <div className="flex">
@@ -36,6 +39,9 @@ export function BuildingCard({
           </span>
         </div>
         <div className="flex gap-1">
+          <Button variant="outline" size="sm" onClick={setEnabled}>
+            <PowerIcon size={16} color={enabled ? "#22C55E" : "#9CA3AF"} />
+          </Button>
           <Button variant="outline" size="sm" onClick={increaseCount}>
             <PlusIcon size={16} />
           </Button>
@@ -48,7 +54,7 @@ export function BuildingCard({
         value={(process.duration > 0) ? process.elapsed/process.duration * 100 : 100}
         duration={process.duration}
         mode={(process.duration > 0) ? "progress" : "continuous"}
-        active={activeCount > 0}
+        active={activeCount > 0 && buildingGroup.enabled}
       />
       <ProcessCard process={process} />
     </div>

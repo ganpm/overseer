@@ -45,6 +45,7 @@ export interface BuildingListProps {
   sortConfig: SortConfig<BuildingGroupInstance>;
   onBuild: (buildingName: string, processName: string) => void;
   onChangeCount: (buildingName: string, processName: string, delta: number) => void;
+  onSetEnabled: (buildingName: string, processName: string, enabled: boolean) => void;
   emptyBuiltMessage: string;
   emptySearchMessage: string;
 }
@@ -61,6 +62,7 @@ export function BuildingList({
   sortConfig,
   onBuild,
   onChangeCount,
+  onSetEnabled,
   emptyBuiltMessage,
   emptySearchMessage,
 }: BuildingListProps) {
@@ -134,6 +136,7 @@ export function BuildingList({
               buildingGroup={buildingGroup}
               increaseCount={() => onChangeCount(buildingGroup.name, buildingGroup.process.name, 1)}
               decreaseCount={() => onChangeCount(buildingGroup.name, buildingGroup.process.name, -1)}
+              setEnabled={() => onSetEnabled(buildingGroup.name, buildingGroup.process.name, !buildingGroup.enabled)}
             />
           ))}
         </div>
