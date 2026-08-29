@@ -26,7 +26,7 @@ const hasAnyFlowInHistory = (series: ThroughputChartData) =>
 
 export interface AnalyticsOverviewProps {
   throughputChartData: ThroughputChartData[];
-  powerChartData: PowerChartData | null;
+  powerChartData: PowerChartData;
 }
 
 export function AnalyticsOverview({
@@ -85,9 +85,7 @@ export function AnalyticsOverview({
       <AccordionItem value="power">
         <AccordionTrigger>Power</AccordionTrigger>
         <AccordionContent>
-          {powerChartData && (
-            <PowerChartCard series={powerChartData} />
-          )}
+          <PowerChartCard series={powerChartData} />
         </AccordionContent>
       </AccordionItem>
     </Accordion>
