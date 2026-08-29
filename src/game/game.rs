@@ -699,9 +699,13 @@ impl Game {
         let needs_power = group.process.power_consumption > 0.0;
         let is_powered = !needs_power || has_power;
 
+        if !group.enabled {
+            return false;
+        }
+
         // Anything mid-cycle stops and loses progress, dropping back to idle.
         // Buildings that need power cannot do anything else this tick.
-        if !group.enabled || (needs_power && !is_powered) {
+        if needs_power && !is_powered {
             if group.active_count > 0 {
                 group.idle_count = group.idle_count.saturating_add(group.active_count);
                 group.active_count = 0;
