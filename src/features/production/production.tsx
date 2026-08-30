@@ -1,6 +1,8 @@
 import { useState } from "react";
-import type { Game } from "pkg/overseer";
-import type { GameSnapshot } from "@/game/game-context.tsx";
+import {
+  useCatalog,
+  useGameSnapshot,
+} from "@/game/game-hooks";
 import {
   Accordion,
   AccordionContent,
@@ -17,17 +19,13 @@ import type { BuildingGroupInstance, InventoryEntry } from "pkg/overseer";
 import { BuildingList } from "@/features/production/building-list";
 import { InventoryList } from "@/features/production/inventory-list";
 
-export interface ProductionOverviewProps {
-  game: Game,
-  snapshot: GameSnapshot,
-}
 
-export const ProductionOverview = ({
-  game,
-  snapshot,
-}: ProductionOverviewProps) => {
-  const availableGenerators = game.catalog.generationBuildings;
-  const availableProducers = game.catalog.productionBuildings;
+export const ProductionOverview = () => {
+  const catalog = useCatalog();
+  const snapshot = useGameSnapshot();
+
+  const availableGenerators = catalog.generationBuildings;
+  const availableProducers = catalog.productionBuildings;
   const constructedBuildings = snapshot.buildings.filter((building) => building.totalCount > 0);
   const constructedGenerators = constructedBuildings.filter((building) => building.process.powerGeneration > 0);
   const constructedProducers = constructedBuildings.filter((building) => building.process.powerConsumption > 0);
@@ -123,9 +121,6 @@ export const ProductionOverview = ({
             sortState={sortStateGenerator}
             onSortStateChange={setSortStateGenerator}
             sortConfig={sortConfigBuildings}
-            onBuild={(buildingName, processName) => game.addBuilding(buildingName, processName, 1)}
-            onChangeCount={(buildingName, processName, delta) => game.addBuilding(buildingName, processName, delta)}
-            onSetEnabled={(buildingName, processName, enabled) => game.setBuildingEnabled(buildingName, processName, enabled)}
             emptyBuiltMessage="No power generators built."
             emptySearchMessage="No power generators match the search query."
           />
@@ -144,9 +139,6 @@ export const ProductionOverview = ({
             sortState={sortStateProducer}
             onSortStateChange={setSortStateProducer}
             sortConfig={sortConfigBuildings}
-            onBuild={(buildingName, processName) => game.addBuilding(buildingName, processName, 1)}
-            onChangeCount={(buildingName, processName, delta) => game.addBuilding(buildingName, processName, delta)}
-            onSetEnabled={(buildingName, processName, enabled) => game.setBuildingEnabled(buildingName, processName, enabled)}
             emptyBuiltMessage="No production buildings built."
             emptySearchMessage="No production buildings match the search query."
           />

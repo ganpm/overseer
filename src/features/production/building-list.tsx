@@ -1,4 +1,5 @@
 import type { BuildingGroupInstance } from "pkg/overseer";
+import { useGameStore } from "@/game/game-context";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -43,9 +44,6 @@ export interface BuildingListProps {
   sortState: SortState<BuildingGroupInstance>;
   onSortStateChange: (next: SortState<BuildingGroupInstance>) => void;
   sortConfig: SortConfig<BuildingGroupInstance>;
-  onBuild: (buildingName: string, processName: string) => void;
-  onChangeCount: (buildingName: string, processName: string, delta: number) => void;
-  onSetEnabled: (buildingName: string, processName: string, enabled: boolean) => void;
   emptyBuiltMessage: string;
   emptySearchMessage: string;
 }
@@ -60,12 +58,11 @@ export function BuildingList({
   sortState,
   onSortStateChange,
   sortConfig,
-  onBuild,
-  onChangeCount,
-  onSetEnabled,
   emptyBuiltMessage,
   emptySearchMessage,
 }: BuildingListProps) {
+  const store = useGameStore();
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex gap-1">
@@ -89,7 +86,7 @@ export function BuildingList({
                       {building.processOptions.map((processName) => (
                         <DropdownMenuItem
                           key={processName}
-                          onClick={() => onBuild(building.name, processName)}
+                          onClick={() => store.mutate(game => game.addBuilding(building.name, processName, 1))}
                         >
                           {processName}
                         </DropdownMenuItem>
@@ -134,9 +131,9 @@ export function BuildingList({
             <BuildingCard
               key={`${buildingGroup.name}-${buildingGroup.process.name}`}
               buildingGroup={buildingGroup}
-              increaseCount={() => onChangeCount(buildingGroup.name, buildingGroup.process.name, 1)}
-              decreaseCount={() => onChangeCount(buildingGroup.name, buildingGroup.process.name, -1)}
-              setEnabled={() => onSetEnabled(buildingGroup.name, buildingGroup.process.name, !buildingGroup.enabled)}
+              increaseCount={() => store.mutate(game => game.addBuilding(buildingGroup.name, buildingGroup.process.name, 1))}
+              decreaseCount={() => store.mutate(game => game.addBuilding(buildingGroup.name, buildingGroup.process.name, -1))}
+              setEnabled={() => store.mutate(game => game.setBuildingEnabled(buildingGroup.name, buildingGroup.process.name, !buildingGroup.enabled))}
             />
           ))}
         </div>

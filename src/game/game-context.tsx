@@ -2,7 +2,6 @@ import {
   createContext,
   useContext,
   useEffect,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -15,6 +14,7 @@ import init, {
 } from "pkg/overseer";
 import gameData from "@/game/game-data.json";
 import { validateGameData } from "@/game/game-data.schema";
+import { GameStore } from "@/game/game-store";
 import { Spinner } from "@/components/ui/spinner";
 
 
@@ -38,7 +38,7 @@ export interface GameContextValue {
   powerChartData: PowerChartData;
 }
 
-const GameContext = createContext<GameContextValue | null>(null);
+const GameStoreContext = createContext<GameStore | null>(null);
 
 const getErrorMessage = (error: unknown): string => {
   if (typeof error === "object" && error !== null && "issues" in error) {
@@ -65,75 +65,49 @@ const getErrorMessage = (error: unknown): string => {
   return "Unknown error";
 };
 
-const readSnapshot = (game: Game): GameSnapshot => ({
-  buildings: game.buildings,
-  inventory: game.inventory,
-});
-
 export const GameProvider = ({ children }: { children: ReactNode }) => {
-  const gameRef = useRef<Game | null>(null);
-  const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
-  const [throughputChartData, setThroughputChartData] = useState<ThroughputChartData[]>([]);
-  const [powerChartData, setPowerChartData] = useState<PowerChartData | null>(null);
-  const [isReady, setIsReady] = useState(false);
+  const [store, setStore] = useState<GameStore | null>(null);
   const [initErrorMessage, setInitErrorMessage] = useState<string | null>(null);
+  
   const [isContentVisible, setIsContentVisible] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
-    void init().then(() => {
-      if (cancelled) return;
-      try {
+    void init()
+      .then(() => {
+        if (cancelled) return;
         const validatedGameData = validateGameData(gameData);
         const game = new Game(validatedGameData, SAMPLE_LENGTH, SAMPLE_INTERVAL_MS);
-        gameRef.current = game;
-        setSnapshot(readSnapshot(game));
-
-        let now = performance.now();
+        const now = performance.now();
         game.sampleThroughputData(now);
         game.samplePowerData(now);
-        setThroughputChartData(game.getThroughputChartData());
-        setPowerChartData(game.getPowerChartData());
+        setStore(new GameStore(game));
 
-        setIsReady(true);
-
-      } catch (error) {
-        if (cancelled) return;
-        setInitErrorMessage(getErrorMessage(error));
-      }
-    }).catch((error: unknown) => {
-      if (cancelled) return;
-      setInitErrorMessage(getErrorMessage(error));
-    });
-
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setInitErrorMessage(getErrorMessage(error));
+      });
     return () => {
       cancelled = true;
     };
   }, []);
 
   useEffect(() => {
-    if (!isReady) return;
+    if (!store) return;
 
     // Set up the game tick interval
     let lastTick = performance.now();
     let tickAccumulatorMs = 0;
     const tickIntervalId = window.setInterval(() => {
-      const game = gameRef.current;
-      if (!game) return;
-  
       const now = performance.now();
-      const tickDeltaMs = now - lastTick;
+      tickAccumulatorMs += now - lastTick;
       lastTick = now;
-      tickAccumulatorMs += tickDeltaMs;
-
       while (tickAccumulatorMs >= TICK_INTERVAL_MS) {
-        game.tick(TICK_INTERVAL_MS);
+        store.tick(TICK_INTERVAL_MS);
         tickAccumulatorMs -= TICK_INTERVAL_MS;
       }
-
-      setSnapshot(readSnapshot(game));
     }, TICK_INTERVAL_MS);
 
     // Set up the sample interval
@@ -141,17 +115,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     let lastSample = performance.now();
     let sampleAccumulatorMs = 0;
     const sampleIntervalId = window.setInterval(() => {
-      const game = gameRef.current;
-      if (!game) return;
-      
       const now = performance.now();
-      const sampleDeltaMs = now - lastSample;
-      sampleAccumulatorMs += sampleDeltaMs;
+      sampleAccumulatorMs += now - lastSample;
+      lastSample = now;
       if (sampleAccumulatorMs >= SAMPLE_INTERVAL_MS) {
-        game.sampleThroughputData(now);
-        game.samplePowerData(now);
-        setThroughputChartData(game.getThroughputChartData());
-        setPowerChartData(game.getPowerChartData());
+        store.sample(now);
         sampleAccumulatorMs -= SAMPLE_INTERVAL_MS;
       }
     }, SAMPLE_INTERVAL_MS);
@@ -160,24 +128,21 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       window.clearInterval(tickIntervalId);
       window.clearInterval(sampleIntervalId);
     };
-  }, [isReady]);
+  }, [store]);
 
   useEffect(() => {
-    if (!isReady) return;
-
+    if (!store) return;
     const frameId = window.requestAnimationFrame(() => {
       setIsContentVisible(true);
     });
-
     const hideLoaderTimeoutId = window.setTimeout(() => {
       setShowLoader(false);
     }, LOAD_FADE_MS);
-
     return () => {
       window.cancelAnimationFrame(frameId);
       window.clearTimeout(hideLoaderTimeoutId);
     };
-  }, [isReady]);
+  }, [store]);
 
   if (initErrorMessage) {
     return (
@@ -190,7 +155,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     );
   }
 
-  if (!gameRef.current || !snapshot || !powerChartData) {
+  if (!store) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
         <div className="flex items-center gap-2 text-muted-foreground" aria-live="polite" aria-busy="true">
@@ -202,7 +167,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <GameContext.Provider value={{ game: gameRef.current, snapshot, throughputChartData, powerChartData }}>
+    <GameStoreContext.Provider value={store}>
       <div
         className={isContentVisible ? "opacity-100" : "opacity-0"}
         style={{ transition: `opacity ${LOAD_FADE_MS}ms ease` }}
@@ -220,14 +185,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
           </div>
         </div>
       )}
-    </GameContext.Provider>
+    </GameStoreContext.Provider>
   );
 };
 
-export const useGame = (): GameContextValue => {
-  const context = useContext(GameContext);
-  if (!context) {
-    throw new Error("useGame must be used within a GameProvider");
-  }
-  return context;
+export const useGameStore = (): GameStore => {
+  const store = useContext(GameStoreContext);
+  if (!store) throw new Error("useGame must be used within a GameProvider");
+  return store;
 };

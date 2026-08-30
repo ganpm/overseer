@@ -1,4 +1,9 @@
 import { useState } from "react";
+import type { ThroughputChartData } from "pkg/overseer";
+import {
+  useThroughputChartData,
+  usePowerChartData,
+} from "@/game/game-hooks";
 import {
   Accordion,
   AccordionContent,
@@ -11,32 +16,20 @@ import {
   selectSortFn,
 } from "@/components/sort-controller";
 import { filterAndSort } from "@/lib/filter-sort";
-import type {
-  ThroughputChartData,
-  PowerChartData,
-} from "pkg/overseer";
 import { ThroughputList } from "@/features/analytics/throughput-list";
 import { PowerChartCard } from "@/features/analytics/power-chart-card";
 
 
 const isEffectivelyZero = (value: number) => Math.abs(value) < 1e-9;
 
-const hasAnyFlowInHistory = (series: ThroughputChartData) =>
-  series.points.some((point) => !isEffectivelyZero(point.produced) || !isEffectivelyZero(point.consumed));
+export function AnalyticsOverview() {
+  const throughputChartData = useThroughputChartData();
+  const powerChartData = usePowerChartData();
 
-export interface AnalyticsOverviewProps {
-  throughputChartData: ThroughputChartData[];
-  powerChartData: PowerChartData;
-}
-
-export function AnalyticsOverview({
-  throughputChartData,
-  powerChartData,
-}: AnalyticsOverviewProps) {
   const nonzeroThroughputChartData = throughputChartData.filter((series) =>
     !isEffectivelyZero(series.currentAmount)
     || !isEffectivelyZero(series.averageRate)
-    || hasAnyFlowInHistory(series)
+    || series.points.some((point) => !isEffectivelyZero(point.produced) || !isEffectivelyZero(point.consumed))
   );
 
   const [searchQueryThroughput, setSearchQueryThroughput] = useState("");

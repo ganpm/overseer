@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useGame } from "@/game/game-context.tsx";
 import { MenuBar } from "@/components/menu-bar";
 import {
   Tabs,
@@ -13,7 +12,6 @@ import { AnalyticsOverview } from "@/features/analytics/analytics.tsx";
 
 
 export const App = () => {
-  const { game, snapshot, throughputChartData, powerChartData } = useGame();
   const [title, setTitle] = useState<"Production" | "Analytics">("Production");
 
   return (
@@ -22,10 +20,10 @@ export const App = () => {
         <MenuBar title={title} className="mx-4 mt-4" />
         <Separator />
         <TabsContent value="production" className="min-h-0 mx-4 overflow-auto scrollbar-hidden">
-          <ProductionOverview game={game} snapshot={snapshot} />
+          <ProductionOverview />
         </TabsContent>
         <TabsContent value="analytics" className="min-h-0 mx-4 overflow-auto scrollbar-hidden">
-          <AnalyticsOverview throughputChartData={throughputChartData} powerChartData={powerChartData} />
+          <AnalyticsOverview />
         </TabsContent>
         <TabsList className="w-full justify-center" variant="line">
           <TabsTrigger value="production" onClick={() => setTitle("Production")}>Production</TabsTrigger>
