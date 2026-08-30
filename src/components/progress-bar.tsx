@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { TICK_INTERVAL_MS } from "@/game/game-context";
+import { usePause } from "@/game/game-hooks";
 
 interface ContinuousProgressBarProps {
   active: boolean;
@@ -8,6 +9,8 @@ interface ContinuousProgressBarProps {
 function ContinuousProgressBar({
   active
 }: ContinuousProgressBarProps) {
+  const [pause, _setPause] = usePause();
+
   return (
     <div
       className={[
@@ -16,7 +19,7 @@ function ContinuousProgressBar({
       ].join(" ")}
       style={{
         width: "100%",
-        animationPlayState: active ? "running" : "paused",
+        animationPlayState: active && !pause ? "running" : "paused",
       }}
     />
   );

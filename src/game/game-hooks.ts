@@ -26,3 +26,8 @@ export const useCatalog = (): Catalog => {
   const store = useGameStore();
   return useSyncExternalStore(store.subscribe, store.getCatalog);
 }
+
+export const usePause = (): [boolean, () => void] => {
+  const store = useGameStore();
+  return [useSyncExternalStore(store.subscribe, store.getPause), store.togglePause];
+}

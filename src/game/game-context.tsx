@@ -53,6 +53,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   
   const [isContentVisible, setIsContentVisible] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
+  const [pause, setPause] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +79,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (!store) return;
+    setPause(store.getPause());
+    return store.subscribe(() => setPause(store.getPause()));
+  }, [store]);
+
+  useEffect(() => {
+    if (!store || pause) return;
 
     // Set up the game tick interval
     let lastTick = performance.now();
@@ -110,7 +117,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       window.clearInterval(tickIntervalId);
       window.clearInterval(sampleIntervalId);
     };
-  }, [store]);
+  }, [store, pause]);
 
   useEffect(() => {
     if (!store) return;

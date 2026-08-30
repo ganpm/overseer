@@ -4,7 +4,7 @@ import {
   Play as PlayIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { usePause } from "@/game/game-hooks";
 
 export interface MenuBarProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string;
@@ -15,7 +15,8 @@ export function MenuBar({
   className,
   ...props
 }: MenuBarProps) {
-  const [paused, setPaused] = useState(false);
+  const [pause, togglePause] = usePause();
+
   return (
     <div
       className={cn([
@@ -28,9 +29,9 @@ export function MenuBar({
       <span className="flex-1 flex items-center justify-start">{title}</span>
       <div className="flex-1 flex items-center justify-end">
         <span className="flex items-center gap-2 text-sm text-muted-foreground">
-          {paused && ("Paused")}
-          <Button variant="outline" onClick={() => setPaused((prev) => !prev)}>
-            {paused ? (
+          {pause && ("Paused")}
+          <Button variant="outline" onClick={togglePause}>
+            {pause ? (
               <PauseIcon fill="#000" stroke="#000" />
             ) : (
               <PlayIcon fill="#000" stroke="#000" />

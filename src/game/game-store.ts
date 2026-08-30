@@ -22,6 +22,7 @@ export class GameStore {
   private throughputChartData: ThroughputChartData[];
   private powerChartData: PowerChartData;
   private readonly catalog: Catalog;
+  private pause: boolean;
 
   constructor(game: Game) {
     this.game = game;
@@ -29,11 +30,14 @@ export class GameStore {
     this.throughputChartData = game.getThroughputChartData();
     this.powerChartData = game.getPowerChartData();
     this.catalog = game.catalog;
+    this.pause = false;
   }
 
   subscribe = (listener: Listener) => {
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
   private notify() {
@@ -45,6 +49,7 @@ export class GameStore {
   getPowerChartData = () => this.powerChartData;
   getGame = () => this.game;
   getCatalog = () => this.catalog;
+  getPause = () => this.pause;
 
   tick(deltaMs: number) {
     this.game.tick(deltaMs);
@@ -57,6 +62,11 @@ export class GameStore {
     this.game.samplePowerData(timestamp);
     this.throughputChartData = this.game.getThroughputChartData();
     this.powerChartData = this.game.getPowerChartData();
+    this.notify();
+  }
+  
+  togglePause = () => {
+    this.pause = !this.pause;
     this.notify();
   }
 
