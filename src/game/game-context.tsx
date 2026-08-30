@@ -5,13 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import init, {
-  Game,
-  type BuildingGroupInstance,
-  type InventoryEntry,
-  type ThroughputChartData,
-  type PowerChartData,
-} from "pkg/overseer";
+import init, { Game } from "pkg/overseer";
 import gameData from "@/game/game-data.json";
 import { validateGameData } from "@/game/game-data.schema";
 import { GameStore } from "@/game/game-store";
@@ -25,18 +19,6 @@ export const TICK_INTERVAL_MS = 50;
 export const SAMPLE_INTERVAL_MS = 1000; // 1 second
 export const SAMPLE_LENGTH = 30;
 export const LOAD_FADE_MS = 400;
-
-export interface GameSnapshot {
-  buildings: BuildingGroupInstance[];
-  inventory: InventoryEntry[];
-}
-
-export interface GameContextValue {
-  game: Game;
-  snapshot: GameSnapshot;
-  throughputChartData: ThroughputChartData[];
-  powerChartData: PowerChartData;
-}
 
 const GameStoreContext = createContext<GameStore | null>(null);
 

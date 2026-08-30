@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { useGameStore } from "@/game/game-context";
-import type { GameSnapshot } from "@/game/game-context";
+import type { GameSnapshot } from "@/game/game-store";
 import type { ThroughputChartData, PowerChartData, Catalog } from "pkg/overseer";
 
 // Selector hooks
