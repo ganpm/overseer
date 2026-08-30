@@ -51,8 +51,7 @@ export function BuildingCard({
         </div>
       </div>
       <ProgressBar
-        value={(process.duration > 0) ? process.elapsed/process.duration * 100 : 100}
-        duration={process.duration}
+        value={(process.duration > 0) ? process.elapsed/(process.duration * 1000) * 100 : 100}
         mode={(process.duration > 0) ? "progress" : "continuous"}
         active={activeCount > 0 && buildingGroup.enabled}
       />

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { TICK_INTERVAL_MS } from "@/game/game-context";
 
 interface ContinuousProgressBarProps {
   active: boolean;
@@ -21,68 +22,45 @@ function ContinuousProgressBar({
   );
 }
 
-interface ProgressProgressBarProps {
+interface DiscreteProgressBarProps {
   value: number;
-  duration: number;
   active: boolean;
 }
 
-function ProgressProgressBar({
+// Drives the fill directly from `value`, animating the transition between ticks instead of relying on keyframes.
+function DiscreteProgressBar({
   value,
-  duration,
-  active
-}: ProgressProgressBarProps) {
-  const previousValue = useRef(value);
-  const [animationKey, setAnimationKey] = useState(0);
+  active,
+}: DiscreteProgressBarProps) {
+  const previous = useRef(0);
 
-  // Detect progress reset
   useEffect(() => {
-    if (value < previousValue.current) {
-      setAnimationKey((prev) => prev + 1);
-    }
-    previousValue.current = value;
+    previous.current = value;
   }, [value]);
 
+  const fraction = Math.min(Math.max(value, 0), 100);
   return (
-    <>
-      <div
-        key={animationKey}
-        className={[
-          "h-full origin-left transition-opacity bg-primary",
-          active ? "opacity-100" : "opacity-55",
-        ].join(" ")}
-        style={{
-          width: "100%",
-          animation: `progress ${duration}s linear forwards`,
-          animationPlayState: active ? "running" : "paused",
-        }}
-      />
-      <style>
-        {`
-          @keyframes progress {
-            from {
-              transform: scaleX(0);
-            }
-            to {
-              transform: scaleX(1);
-            }
-          }
-        `}
-      </style>
-    </>
+    <div
+      className={[
+        "h-full origin-left transition-opacity bg-primary",
+        active ? "opacity-100" : "opacity-55",
+      ].join(" ")}
+      style={{
+        width: `${fraction}%`,
+        transition: value >= previous.current ? `width ${TICK_INTERVAL_MS}ms linear` : "none",
+      }}
+    />
   );
 }
 
 export interface ProgressBarProps {
   value: number;
-  duration: number;
   active: boolean;
   mode: "progress" | "continuous";
 }
 
 export function ProgressBar({
   value,
-  duration,
   mode = "progress",
   active = true,
 }: ProgressBarProps) {
@@ -92,7 +70,8 @@ export function ProgressBar({
       {isContinuous ? (
         <ContinuousProgressBar active={active} />
       ) : (
-        <ProgressProgressBar value={value} duration={duration} active={active} />
+        //<ProgressProgressBar value={value} duration={duration} active={active} />
+        <DiscreteProgressBar value={value} active={active} />
       )}
     </div>
   );
