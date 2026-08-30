@@ -17,7 +17,7 @@ export const App = () => {
   return (
     <div className="flex flex-col h-screen items-center w-full bg-foreground overflow-hidden">
       <Tabs defaultValue="production" className="flex-1 flex flex-col gap-2 min-h-0 w-full md:w-md bg-background">
-        <MenuBar title={title} className="mx-4 mt-4" />
+        <MenuBar title={title} className="mx-4 mt-2" />
         <Separator />
         <TabsContent value="production" className="min-h-0 mx-4 overflow-auto scrollbar-hidden">
           <ProductionOverview />
