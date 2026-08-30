@@ -409,7 +409,16 @@ impl Game {
 
         self.buildings
             .entry((building_name.to_string(), process_name.to_string()))
-            .and_modify(|bgi| bgi.enabled = enabled);
+            .and_modify(|bgi| {
+                bgi.enabled = enabled;
+
+                // Disabling stops in-progress work immediately, same as losing power.
+                if !enabled && bgi.active_count > 0 {
+                    bgi.idle_count = bgi.idle_count.saturating_add(bgi.active_count);
+                    bgi.active_count = 0;
+                    bgi.process.elapsed = 0.0;
+                }
+            });
 
         Ok(())
     }
@@ -431,7 +440,7 @@ impl Game {
         let mut current_power_consumption = 0.0;
         let mut current_power_generation = 0.0;
 
-        self.buildings.values().for_each(|group| {
+        self.buildings.values().filter(|group| group.enabled).for_each(|group| {
             maximum_power_consumption += group.process.power_consumption * group.total_count as f64;
             maximum_power_generation += group.process.power_generation * group.total_count as f64;
             current_power_consumption += group.process.power_consumption * group.active_count as f64;
