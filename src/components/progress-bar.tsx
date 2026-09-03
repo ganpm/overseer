@@ -69,7 +69,7 @@ export function ProgressBar({
 }: ProgressBarProps) {
   const isContinuous = mode === "continuous";
   return (
-    <div className="relative flex h-1 w-full items-center overflow-x-hidden rounded-full bg-muted">
+    <div className="relative flex h-1 mb-1 w-full items-center overflow-x-hidden rounded-full bg-muted">
       {isContinuous ? (
         <ContinuousProgressBar active={active} />
       ) : (
