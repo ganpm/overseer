@@ -414,9 +414,10 @@ impl Game {
 
                 // Disabling stops in-progress work immediately, same as losing power.
                 if !enabled && bgi.active_count > 0 {
-                    bgi.idle_count = bgi.idle_count.saturating_add(bgi.active_count);
+                    bgi.idle_count = bgi.total_count;
                     bgi.active_count = 0;
                     bgi.process.elapsed = 0.0;
+                    bgi.process.efficiency = 0.0;
                 }
             });
 
@@ -705,34 +706,47 @@ impl Game {
         has_power: bool,
         consumer_power_scale: f64,
     ) -> bool {
+        if !group.enabled {
+            group.process.efficiency = 0.0;
+
+            if group.active_count > 0 {
+                group.idle_count = group.total_count;
+                group.active_count = 0;
+                group.process.elapsed = 0.0;
+                return true;
+            }
+
+            return false;
+        }
+
         let needs_power = group.process.power_consumption > 0.0;
         let is_powered = !needs_power || has_power;
 
-        if !group.enabled {
-            return false;
-        }
+        // Brownouts (has power but scarce) slows consumers down instead of stopping them
+        // Non-consumers are unaffected
+        let efficiency = if needs_power {
+            if has_power {
+                consumer_power_scale
+            } else {
+                0.0
+            }
+        } else {
+            1.0
+        };
+
+        group.process.efficiency = efficiency;
 
         // Anything mid-cycle stops and loses progress, dropping back to idle.
         // Buildings that need power cannot do anything else this tick.
         if needs_power && !is_powered {
             if group.active_count > 0 {
-                group.idle_count = group.idle_count.saturating_add(group.active_count);
+                group.idle_count = group.total_count;
                 group.active_count = 0;
                 group.process.elapsed = 0.0;
                 return true;
             }
             return false;
         }
-
-        // Brownouts (has power but scarce) slows consumers down instead of stopping them
-        // Non-consumers are unaffected
-        let efficiency = if needs_power && is_powered {
-            consumer_power_scale
-        } else {
-            1.0
-        };
-
-        group.process.efficiency = efficiency;
 
         if group.active_count > 0 {
             let time_advanced = delta_ms * efficiency * group.cycle_speed_mult;
