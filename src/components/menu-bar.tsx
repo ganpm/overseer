@@ -6,6 +6,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { usePause } from "@/game/game-hooks";
 
+const pauseColor = "var(--primary)";
+
 export interface MenuBarProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string;
 }
@@ -16,7 +18,6 @@ export function MenuBar({
   ...props
 }: MenuBarProps) {
   const [pause, togglePause] = usePause();
-
   return (
     <div
       className={cn([
@@ -32,9 +33,9 @@ export function MenuBar({
           {pause && ("Paused")}
           <Button variant="outline" onClick={togglePause}>
             {pause ? (
-              <PauseIcon fill="#000" stroke="#000" />
+              <PauseIcon fill={pauseColor} stroke={pauseColor} />
             ) : (
-              <PlayIcon fill="#000" stroke="#000" />
+              <PlayIcon fill={pauseColor} stroke={pauseColor} />
             )}
           </Button>
         </span>
