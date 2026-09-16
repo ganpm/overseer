@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { BuildingGroupInstance } from "pkg/overseer";
+import type { BuildingGroupInstance, ResourceAmount } from "pkg/overseer";
 import { Button } from "@/components/ui/button";
 import {
   Plus as PlusIcon,
@@ -18,17 +18,17 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 
 const status = {
-  online: "var(--color-green-500)", // #22C55E
-  offline: "var(--color-red-500)", // #EF4444
+  on: "var(--color-green-500)", // #22C55E
+  stopped: "var(--color-red-500)", // #EF4444
   warning: "var(--color-yellow-500)", // #F59E0B
-  disabled: "var(--color-gray-400)", // #9CA3AF
+  off: "var(--color-gray-400)", // #9CA3AF
 };
 
 const getStatusColor = (active: boolean, efficient: boolean, enabled: boolean) => {
-  if (!enabled) return status.disabled;
-  if (!active) return status.offline;
+  if (!enabled) return status.off;
+  if (!active) return status.stopped;
   if (!efficient) return status.warning;
-  return status.online;
+  return status.on;
 };
 
 const powerFmt = (number: number) => number.toLocaleString(undefined, {
@@ -39,14 +39,18 @@ const powerFmt = (number: number) => number.toLocaleString(undefined, {
 
 const speedFmt = (number: number) => number.toLocaleString(undefined, {
   minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
+  maximumFractionDigits: 0,
   signDisplay: "never",
 })
 
-const getSpeedColor = (efficiency:number): { fg: string, bg: string } => {
-  if (efficiency >= 1.0) return { fg: "text-green-800", bg: "bg-green-100" };
-  if (efficiency > 0.0) return { fg: "text-yellow-800", bg: "bg-yellow-100" };
+const getSpeedColor = (speed:number): { fg: string, bg: string } => {
+  if (speed >= 100) return { fg: "text-green-800", bg: "bg-green-100" };
+  if (speed > 0) return { fg: "text-yellow-800", bg: "bg-yellow-100" };
   return { fg: "text-muted-foreground", bg: "bg-muted" };
+};
+
+const canStart = (inputBuffer: Record<string, number>, inputs: ResourceAmount[]) => {
+  return inputs.every(({ resource, amount }) => (inputBuffer[resource] ?? 0) >= amount);
 };
 
 export interface BuildingCardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -63,22 +67,24 @@ export function BuildingCard({
   setEnabled,
   ...props
 }: BuildingCardProps) {
-  const { name, totalCount, activeCount, process, enabled } = buildingGroup;
+  const { name, totalCount, activeCount, process, enabled, inputBuffer } = buildingGroup;
+  const consumesPower = process.powerConsumption > 0;
+  const efficiency = consumesPower ? process.powerAllocated / process.powerConsumption : 1.0;
   const isActive = activeCount > 0;
-  const isPowered = process.efficiency > 0.0;
-  const isEfficient = process.efficiency >= 1.0;
+  const isEfficient = efficiency >= 1.0;
   const isEnabled = enabled;
   const statusColor = getStatusColor(isActive, isEfficient, isEnabled);
-  const noInput = isPowered && isEnabled && !isActive;
+  //const noInput = isPowered && isEnabled && !isActive;
+  const noInput = !canStart(inputBuffer, process.inputs) && !isActive && isEnabled;
 
   const netActivePower = (process.powerGeneration - process.powerConsumption) * activeCount;
   const netTotalPower = (process.powerGeneration - process.powerConsumption) * totalCount;
 
-  const noPower = process.efficiency === 0.0 && isEnabled;
-  const lowPower = process.efficiency > 0.0 && process.efficiency < 1.0 && isEnabled;
+  const noPower = consumesPower ? process.powerAllocated === 0.0 && isEnabled : false;
+  const lowPower = consumesPower ? process.powerAllocated > 0.0 && process.powerAllocated < process.powerConsumption && isEnabled : false;
 
-  const speed = process.efficiency * 100;
-  const speedColor = getSpeedColor(process.efficiency);
+  const speed = isEnabled ? efficiency * 100 : 0;
+  const speedColor = getSpeedColor(speed);
 
   return (
     <div className="flex flex-col gap-2 border rounded-md p-3 w-full bg-card" {...props}>
@@ -129,7 +135,7 @@ export function BuildingCard({
       <div className="flex min-h-5 gap-2 items-center">
         {!enabled && (
           <div className="flex items-center gap-1">
-            <DisabledIcon size={13} stroke={status.disabled} />
+            <DisabledIcon size={13} stroke={status.off} />
             <span className="text-muted-foreground">Offline</span>
           </div>
         )}
@@ -141,14 +147,14 @@ export function BuildingCard({
         )}
         {noPower && (
           <div className="flex items-center gap-1">
-            <UnpoweredIcon size={13} stroke={status.offline} />
+            <UnpoweredIcon size={13} stroke={status.stopped} />
             <span className="text-muted-foreground">No power</span>
           </div>
         )}
         {noInput && (
           <div className="flex items-center gap-1">
-            <AlertIcon size={13} stroke={status.offline} />
-            <span className="text-muted-foreground">No input</span>
+            <AlertIcon size={13} stroke={status.stopped} />
+            <span className="text-muted-foreground">Not enough resources</span>
           </div>
         )}
       </div>
