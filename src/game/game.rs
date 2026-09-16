@@ -16,7 +16,7 @@ pub struct Resource {
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct ResourceAmount {
-    amount: f64,
+    amount: i32,
     resource: String,
 }
 
@@ -52,11 +52,11 @@ pub struct ProcessInstance {
     name: String,
     power_consumption: f64,
     power_generation: f64,
+    power_allocated: f64,
     inputs: Vec<ResourceAmount>,
     outputs: Vec<ResourceAmount>,
     duration: f64,
     elapsed: f64,
-    efficiency: f64,
 }
 
 /// Represents a group of buildings running the same process.
@@ -71,10 +71,41 @@ pub struct BuildingGroupInstance {
     /// The number of buildings running the process.
     /// Some buildings will not be active if there are not enough resources to run the process.
     active_count: u32,
-    idle_count: u32,
     cycle_speed_mult: f64,
     enabled: bool,
+    /// Locally buffered input resources, topped up via fair allocation; capped at amount * total_count per resource.
+    input_buffer: HashMap<String, i32>,
 }
+
+
+impl BuildingGroupInstance {
+
+    /// Count how many buildings in the group can start with the available resources in the input buffer.
+    pub fn count_startable(&self) -> u32 {
+        if !self.enabled {
+            return 0;
+        }
+
+        let requested = self.total_count;
+        let cost = &self.process.inputs;
+        let inventory = &self.input_buffer;
+
+        if requested == 0 || cost.is_empty() {
+            return requested;
+        }
+
+        cost.iter().fold(requested, |max_count, item| {
+            if item.amount <= 0 {
+                return max_count;
+            }
+            let available = inventory.get(&item.resource).copied().unwrap_or(0);
+            let affordable = (available / item.amount).max(0) as u32;
+            max_count.min(affordable)
+        })
+    }
+
+}
+
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
 #[tsify(from_wasm_abi)]
@@ -91,6 +122,7 @@ pub struct JSONGameData {
 pub struct Catalog {
     production_buildings: Vec<Building>,
     generation_buildings: Vec<Building>,
+    building_entries: Vec<(String, String)>,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
@@ -106,8 +138,8 @@ pub struct GameData {
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct ThroughputData {
-    produced: f64,
-    consumed: f64,
+    produced: i32,
+    consumed: i32,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
@@ -115,8 +147,8 @@ pub struct ThroughputData {
 #[serde(rename_all = "camelCase")]
 pub struct ThroughputDataPoint {
     timestamp: f64,
-    produced: f64,
-    consumed: f64,
+    produced: i32,
+    consumed: i32,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
@@ -124,10 +156,10 @@ pub struct ThroughputDataPoint {
 #[serde(rename_all = "camelCase")]
 pub struct ThroughputChartData {
     resource_name: String,
-    current_amount: f64,
-    average_production: f64,
-    average_consumption: f64,
-    average_rate: f64,
+    current_amount: i32,
+    average_production: i32,
+    average_consumption: i32,
+    average_rate: i32,
     points: Vec<ThroughputDataPoint>,
 }
 
@@ -136,7 +168,7 @@ pub struct ThroughputChartData {
 #[serde(rename_all = "camelCase")]
 pub struct InventoryEntry {
     resource: String,
-    amount: f64,
+    amount: i32,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone, Copy, Default)]
@@ -182,7 +214,7 @@ pub struct Game {
     /// The current inventory.
     /// Uses the resource name to keep track of the quantity of that resource in the inventory.
     /// Represented as a HashMap for efficient lookups and updates of item quantities.
-    inventory: HashMap<String, f64>,
+    inventory: HashMap<String, i32>,
 
     /// The currently constructed buildings and the processes they are currently running.
     buildings: HashMap<(String, String), BuildingGroupInstance>,
@@ -207,27 +239,6 @@ pub struct Game {
 
     /// Internal database for game data
     catalog: Catalog,
-}
-
-impl Game {
-    fn max_affordable(
-        inventory: &HashMap<String, f64>,
-        cost: &[ResourceAmount],
-        requested: u32,
-    ) -> u32 {
-        if requested == 0 || cost.is_empty() {
-            return requested;
-        }
-
-        cost.iter().fold(requested, |max_count, item| {
-            if item.amount <= 0.0 {
-                return max_count;
-            }
-            let available = inventory.get(&item.resource).copied().unwrap_or(0.0);
-            let affordable = (available / item.amount).floor().max(0.0) as u32;
-            max_count.min(affordable)
-        })
-    }
 }
 
 
@@ -326,7 +337,6 @@ impl Game {
 
                     let group = entry.get_mut();
                     group.total_count = group.total_count.saturating_add(buildable);
-                    group.idle_count = group.idle_count.saturating_add(buildable);
                 },
                 Entry::Vacant(entry) => {
                     let Some(process) = self.data.processes.get(process_name) else {
@@ -347,33 +357,40 @@ impl Game {
                             name: process_name.to_string(),
                             power_consumption: process.power_consumption,
                             power_generation: process.power_generation,
+                            power_allocated: 0.0,
                             inputs: process.inputs.clone(),
                             outputs: process.outputs.clone(),
                             duration: process.duration,
                             elapsed: 0.0,
-                            efficiency: 0.0,
                         },
                         total_count: buildable,
                         active_count: 0,
-                        idle_count: buildable,
                         cycle_speed_mult: 1.0,
                         enabled: true,
+                        input_buffer: HashMap::new(),
                     });
                 }
             }
         } else {
-            let to_remove = (-count) as u32;
-
             if let Entry::Occupied(mut entry) = self.buildings.entry(key) {
                 let group = entry.get_mut();
-                let removed = to_remove.min(group.total_count);
+                let count_to_remove = count.unsigned_abs();
+                let from_active = count_to_remove.min(group.active_count);
+                let from_total = count_to_remove.min(group.total_count);
 
-                let from_idle = removed.min(group.idle_count);
-                group.idle_count = group.idle_count.saturating_sub(from_idle);
-
-                let from_active = removed.saturating_sub(from_idle);
                 group.active_count = group.active_count.saturating_sub(from_active);
-                group.total_count = group.total_count.saturating_sub(removed);
+                group.total_count = group.total_count.saturating_sub(from_total);
+
+                // Buffer capacity shrinks with total_count; drop any amount that no longer fits.
+                let total_count = group.total_count as i32;
+                for input in &group.process.inputs {
+                    let max_amount = input.amount.saturating_mul(total_count);
+                    if let Some(buffered) = group.input_buffer.get_mut(&input.resource) {
+                        if *buffered > max_amount {
+                            *buffered = max_amount;
+                        }
+                    }
+                }
 
                 if group.total_count == 0 {
                     entry.remove();
@@ -409,17 +426,7 @@ impl Game {
 
         self.buildings
             .entry((building_name.to_string(), process_name.to_string()))
-            .and_modify(|bgi| {
-                bgi.enabled = enabled;
-
-                // Disabling stops in-progress work immediately, same as losing power.
-                if !enabled && bgi.active_count > 0 {
-                    bgi.idle_count = bgi.total_count;
-                    bgi.active_count = 0;
-                    bgi.process.elapsed = 0.0;
-                    bgi.process.efficiency = 0.0;
-                }
-            });
+            .and_modify(|bgi| bgi.enabled = enabled);
 
         Ok(())
     }
@@ -434,50 +441,26 @@ impl Game {
             return Ok(false);
         }
 
-        // Update power data for current tick
+        // Distribute contested input resources into each group's buffer before groups try to start.
+        self.tick_resource_allocation();
 
-        let mut maximum_power_consumption = 0.0;
-        let mut maximum_power_generation = 0.0;
-        let mut current_power_consumption = 0.0;
-        let mut current_power_generation = 0.0;
+        // Distribute power for the current game tick
+        self.tick_power_allocation();
 
-        self.buildings.values().filter(|group| group.enabled).for_each(|group| {
-            maximum_power_consumption += group.process.power_consumption * group.total_count as f64;
-            maximum_power_generation += group.process.power_generation * group.total_count as f64;
-            current_power_consumption += group.process.power_consumption * group.active_count as f64;
-            current_power_generation += group.process.power_generation * group.active_count as f64;
-        });
-
-        let has_power = current_power_generation > 0.0;
-
-        let consumer_power_scale = if current_power_consumption > 0.0 {
-            (current_power_generation / current_power_consumption).clamp(0.0, 1.0)
-        } else {
-            1.0
-        };
-
-        self.power_data = PowerData {
-            maximum_consumption: -maximum_power_consumption,
-            maximum_generation: maximum_power_generation,
-            current_consumption: -current_power_consumption,
-            current_generation: current_power_generation,
-        };
-
-        let Game { inventory, buildings, ..} = self;
+        let Game { inventory, ..} = self;
 
         let mut changed = false;
 
         // Note: |= on purpose, not || because || short-circuits and we want to tick all groups even if one returns true.
-        for group in buildings.values_mut() {
+
+        self.buildings.values_mut().filter(|group| group.enabled).for_each(|group| {
             changed |= Self::tick_group(
                 group,
                 inventory,
                 &mut self.throughput_data,
                 delta_ms,
-                has_power,
-                consumer_power_scale
             );
-        }
+        });
 
         Ok(changed)
     }
@@ -493,13 +476,13 @@ impl Game {
                 .cloned()
                 .unwrap_or_else(|| vec![ThroughputDataPoint {
                     timestamp: 0.0,
-                    produced: 0.0,
-                    consumed: 0.0,
+                    produced: 0,
+                    consumed: 0,
                 }; self.sample_length].into());
 
-            let current_amount = *self.inventory.get(resource_name).unwrap_or(&0.0);
-            let average_production = points.iter().map(|p| p.produced).sum::<f64>() / self.sample_length as f64;
-            let average_consumption = points.iter().map(|p| p.consumed).sum::<f64>() / self.sample_length as f64;
+            let current_amount = *self.inventory.get(resource_name).unwrap_or(&0);
+            let average_production = points.iter().map(|p| p.produced).sum::<i32>() / self.sample_length as i32;
+            let average_consumption = points.iter().map(|p| p.consumed).sum::<i32>() / self.sample_length as i32;
             let average_rate = average_production + average_consumption;
 
             series.push(ThroughputChartData {
@@ -528,8 +511,8 @@ impl Game {
                     (0..self.sample_length)
                         .map(|i| ThroughputDataPoint {
                             timestamp: timestamp - (((self.sample_length - 1 - i) as f64) * self.sample_interval),
-                            produced: 0.0,
-                            consumed: 0.0,
+                            produced: 0,
+                            consumed: 0,
                         })
                         .collect()
                 }); // Initialize with default points if not present
@@ -657,24 +640,35 @@ impl Game {
             .map(|b| b.clone())
             .collect();
 
+        let building_entries = json_data.buildings.iter()
+            .flat_map(|b| b.process_options.iter().map(move |p| (b.name.clone(), p.clone())))
+            .collect::<Vec<_>>();
+
         Catalog {
             production_buildings,
             generation_buildings,
+            building_entries,
         }
     }
 
     fn consume_inputs(
-        inventory: &mut HashMap<String, f64>,
+        inventory: &mut HashMap<String, i32>,
         throughput_data: &mut HashMap<String, ThroughputData>,
         inputs: &[ResourceAmount],
         count: u32,
     ) {
+        if count == 0 {
+            return;
+        }
+
         for input in inputs {
-            let consumed_amount = input.amount * count as f64;
-            if consumed_amount <= 0.0 {
+            let consumed_amount = input.amount * count as i32;
+            if consumed_amount <= 0 {
                 continue;
             }
-            *inventory.entry(input.resource.clone()).or_insert(0.0) -= consumed_amount;
+            *inventory
+                .entry(input.resource.clone())
+                .or_insert(0) -= consumed_amount;
             throughput_data
                 .entry(input.resource.clone())
                 .or_insert_with(ThroughputData::default)
@@ -683,118 +677,163 @@ impl Game {
     }
 
     fn produce_outputs(
-        inventory: &mut HashMap<String, f64>,
-        throughtput_values: &mut HashMap<String, ThroughputData>,
+        inventory: &mut HashMap<String, i32>,
+        throughput_data: &mut HashMap<String, ThroughputData>,
         outputs: &[ResourceAmount],
         count: u32,
     ) {
         for output in outputs {
-            let produced_amount = output.amount * count as f64;
-            *inventory.entry(output.resource.clone()).or_insert(0.0) += produced_amount;
-            throughtput_values
+            let produced_amount = output.amount * count as i32;
+            *inventory
+                .entry(output.resource.clone())
+                .or_insert(0) += produced_amount;
+            throughput_data
                 .entry(output.resource.clone())
                 .or_insert_with(ThroughputData::default)
                 .produced += produced_amount;
         }
     }
 
-    fn tick_group(
-        group: &mut BuildingGroupInstance,
-        inventory: &mut HashMap<String, f64>,
-        throughput_data: &mut HashMap<String, ThroughputData>,
-        delta_ms: f64,
-        has_power: bool,
-        consumer_power_scale: f64,
-    ) -> bool {
-        if !group.enabled {
-            group.process.efficiency = 0.0;
 
-            if group.active_count > 0 {
-                group.idle_count = group.total_count;
-                group.active_count = 0;
-                group.process.elapsed = 0.0;
-                return true;
+    /// Loads inputs from the shared inventory into each enabled group's input buffer.
+    /// The input priority is determined by the order of declaration in the catalog.
+    /// By convention, groups declared earlier in the catalog are in the beginning of the production chain,
+    /// and are therefore given higher priority when taking resources from the shared inventory.
+    fn tick_resource_allocation(&mut self) {
+        for (building_name, process_name) in self.catalog.building_entries.iter() {
+            let Some(group) = self.buildings.get_mut(&(building_name.clone(), process_name.clone())) else {
+                continue;
+            };
+            if !group.enabled {
+                continue;
             }
 
-            return false;
+            for input in &group.process.inputs {
+                let max_buffered = input.amount * group.total_count as i32;
+                let buffered = group.input_buffer.get(&input.resource).copied().unwrap_or(0);
+                if buffered >= max_buffered {
+                    continue; // Buffer already full, skip it.
+                }
+                let available = self.inventory.get(&input.resource).copied().unwrap_or(0);
+                let to_load = (max_buffered - buffered).min(available);
+                if to_load > 0 {
+                    *group.input_buffer.entry(input.resource.clone()).or_insert(0) += to_load;
+                    *self.inventory.entry(input.resource.clone()).or_insert(0) -= to_load;
+                }
+            }
         }
+    }
 
-        let needs_power = group.process.power_consumption > 0.0;
-        let is_powered = !needs_power || has_power;
+    pub fn tick_power_allocation(&mut self) {
+        let mut maximum_power_consumption = 0.0;
+        let mut maximum_power_generation = 0.0;
+        let mut current_power_consumption = 0.0;
+        let mut current_power_generation = 0.0;
 
-        // Brownouts (has power but scarce) slows consumers down instead of stopping them
-        // Non-consumers are unaffected
-        let efficiency = if needs_power {
-            if has_power {
-                consumer_power_scale
-            } else {
-                0.0
-            }
-        } else {
-            1.0
+        self.buildings
+            .values()
+            .filter(|group| group.enabled)
+            .for_each(|group| {
+                let power_consumption = group.process.power_consumption;
+                let power_generation = group.process.power_generation;
+                let total_count = group.total_count as f64;
+
+                maximum_power_consumption += power_consumption * total_count;
+                maximum_power_generation += power_generation * total_count;
+
+                // If the group is currently working, use that
+                // Otherwise, use the number of buildings that can start based on available inputs.
+                let count = if group.active_count > 0 {
+                    group.active_count as f64
+                } else {
+                    group.count_startable() as f64
+                };
+                current_power_consumption += power_consumption * count;
+                current_power_generation += power_generation * count;
+            });
+
+        self.power_data = PowerData {
+            maximum_consumption: -maximum_power_consumption,
+            maximum_generation: maximum_power_generation,
+            current_consumption: -current_power_consumption,
+            current_generation: current_power_generation,
         };
 
-        group.process.efficiency = efficiency;
+        // Power distribution policy: Proportionate distribution
+        // Use active count when distributing power to ensure that only currently working buildings receive power.
+        // The active count also includes buildings that can start based on available inputs to prevent deadlocks.
+        let consumer_power_ratio = if current_power_consumption > 0.0 {
+            // If there is power being consumed, calculate the proportion of available power to allocate.
+            (current_power_generation / current_power_consumption).clamp(0.0, 1.0)
+        } else if current_power_generation > 0.0 {
+            // If there is power being generated but no consumption, allocate all available power.
+            1.0
+        } else {
+            // No power is being generated and no power is being consumed, so allocate nothing.
+            0.0
+        };
 
-        // Anything mid-cycle stops and loses progress, dropping back to idle.
-        // Buildings that need power cannot do anything else this tick.
-        if needs_power && !is_powered {
+        self.buildings
+            .values_mut()
+            .filter(|group| group.enabled)
+            .for_each(|group| {
+                group.process.power_allocated = group.process.power_consumption * consumer_power_ratio;
+            });
+    }
+
+    fn tick_group(
+        group: &mut BuildingGroupInstance,
+        inventory: &mut HashMap<String, i32>,
+        throughput_data: &mut HashMap<String, ThroughputData>,
+        delta_ms: f64,
+    ) -> bool {
+        let consumes_power = group.process.power_consumption > 0.0;
+        let is_powered = group.process.power_allocated > 0.0;
+        let mut changed = false;
+
+        // If the building group requires power but is not powered, set all buildings to idle and return.
+        // Reset the progress of the process.
+        if consumes_power && !is_powered {
             if group.active_count > 0 {
-                group.idle_count = group.total_count;
                 group.active_count = 0;
                 group.process.elapsed = 0.0;
-                return true;
+                changed = true;
             }
-            return false;
+            return changed;
         }
 
         if group.active_count > 0 {
-            let time_advanced = delta_ms * efficiency * group.cycle_speed_mult;
-            let next_elapsed = group.process.elapsed + time_advanced;
-
-            // Cycle not complete: just increment elapsed cycle time and return.
-            if next_elapsed < group.process.duration * 1000.0 {
-                group.process.elapsed = next_elapsed;
-                return true;
-            }
-
-            // Cycle complete: produce outputs for buildings that were
-            // actively working this cycle.
-            Self::produce_outputs(inventory, throughput_data, &group.process.outputs, group.active_count);
-
-            // Buildings that just finished and and those in idle count (new arrivals or previously resource-starved)
-            // now compete together for the next cycle.
-            let candidates = group.active_count + group.idle_count;
-            let starting = if is_powered {
-                Self::max_affordable(inventory, &group.process.inputs, candidates)
+            let efficiency = if consumes_power {
+                group.process.power_allocated / group.process.power_consumption
             } else {
-                0
+                1.0
             };
-
-            if starting > 0 {
-                // Consume inputs for the buildings that will start the next cycle.
-                Self::consume_inputs(inventory, throughput_data, &group.process.inputs, starting);
-            }
-            group.active_count = starting;
-            group.idle_count = candidates.saturating_sub(starting);
-            group.process.elapsed = 0.0;
-            return true;
-        } else if group.idle_count > 0 && is_powered {
-            // Nothing running - idle buildings try to start a new cycle as soon as resources and power allow
-            let starting = Self::max_affordable(inventory, &group.process.inputs, group.idle_count);
-            if starting > 0 {
-                // Consume inputs for the buildings that will start the next cycle.
-                Self::consume_inputs(inventory, throughput_data, &group.process.inputs, starting);
-
-                group.active_count = starting;
-                group.idle_count = group.idle_count.saturating_sub(starting);
-                group.process.elapsed = 0.0;
+            // Increment first before checking to prevent off-by-one errors in cycle completion.
+            group.process.elapsed += delta_ms * efficiency * group.cycle_speed_mult;
+            if group.process.elapsed < group.process.duration * 1000.0 {
                 return true;
-            } else {
-                return false;
             }
-        } else {
-            return false;
+            Self::produce_outputs(inventory, throughput_data, &group.process.outputs, group.active_count);
+            changed = true; // Outputs have been produced (normally a diff check but we trust that it did change)
+            group.active_count = 0; // Reset active count after producing outputs, also allows next block to run
+            group.process.elapsed = 0.0; // Reset elapsed time for the next cycle (in case the next block failed to start any new cycles)
         }
+
+        if group.active_count == 0 {
+            // Nothing running - idle buildings try to start a new cycle using their buffered inputs
+            let starting = group.count_startable();
+            if starting > 0 {
+                // Consume buffered inputs for the buildings that will start the next cycle.
+                Self::consume_inputs(&mut group.input_buffer, throughput_data, &group.process.inputs, starting);
+                group.active_count = starting;
+                group.process.elapsed = 0.0;
+                changed = true;
+            }
+            // Preserve changed here
+            // - if produced outputs in the previous cycle, doesnt matter if new cycles were started (changed = true from production)
+            // - if did not produce outputs but tried to start a new cycle and failed due to insufficient resources (changed = false from initialization)
+        }
+
+        changed
     }
 }
