@@ -127,8 +127,8 @@ export function PowerChartCard({
         </div>
         <div className="flex items-center">
           <GridStatus
-            production={series.averageCurrentGeneration}
-            consumption={series.averageCurrentConsumption}
+            production={Math.abs(series.averageCurrentGeneration)}
+            consumption={Math.abs(series.averageCurrentConsumption)}
           />
         </div>
       </div>
