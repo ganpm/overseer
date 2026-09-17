@@ -1,4 +1,5 @@
 import type { ThroughputChartData } from "pkg/overseer";
+import { cn } from "@/lib/utils";
 import {
   CartesianGrid,
   Area,
@@ -13,15 +14,10 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { Separator } from "@/components/ui/separator";
 import {
-  Package as ResourceIcon,
-  TrendingUp as IncreasingIcon,
-  TrendingDown as DecreasingIcon,
-  MoveRight as NeutralIcon,
-  Hash as CountIcon,
-  ChevronsUp as ProductionRateIcon,
-  ChevronsDown as ConsumptionRateIcon,
-  ChartNoAxesCombined as TotalRateIcon,
+  ArrowUp as ProductionRateIcon,
+  ArrowDown as ConsumptionRateIcon,
 } from "lucide-react";
 import { SAMPLE_INTERVAL_MS } from "@/game/game-context.tsx";
 
@@ -29,15 +25,23 @@ export interface ThroughputChartCardProps extends React.HTMLAttributes<HTMLDivEl
   series: ThroughputChartData;
 }
 
-const signedFormat = (number: number) => number.toLocaleString(undefined, {
-  maximumFractionDigits: 2,
-  signDisplay: "exceptZero",
-})
-
-const unsignedFormat = (number: number) => number.toLocaleString(undefined, {
-  maximumFractionDigits: 2,
+const amountFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 0,
+  minimumFractionDigits: 0,
   signDisplay: "never",
-})
+});
+
+const unsignedRateFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+  signDisplay: "never",
+});
+
+const signedRateFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+  signDisplay: "exceptZero",
+});
 
 
 const config = {
@@ -56,11 +60,11 @@ export function ThroughputChartCard({
   ...props
 }: ThroughputChartCardProps) {
   const resourceName = series.resourceName;
-  
-  const currentAmountString = unsignedFormat(series.currentAmount);
-  const averageRateString = signedFormat(series.averageRate);
-  const averageProductionString = unsignedFormat(series.averageProduction);
-  const averageConsumptionString = unsignedFormat(series.averageConsumption);
+
+  const amount = amountFormatter.format(series.currentAmount);
+  const productionRate = unsignedRateFormatter.format(series.averageProduction);
+  const consumptionRate = unsignedRateFormatter.format(series.averageConsumption);
+  const netRate = signedRateFormatter.format(series.averageRate);
 
   // Set domainMin to the 2nd point to hide the disappearing 1st point whenever the chart is updated.
   const domainMin = series.points[1]?.timestamp ?? 0;
@@ -77,48 +81,23 @@ export function ThroughputChartCard({
   }
 
   return (
-    <div className="flex flex-col gap-1 border rounded-md p-3" {...props}>
-      <span className="flex items-center gap-1 font-medium">
-        {resourceName}
-        {(series.averageRate > 0) ? (
-          <IncreasingIcon size={20} />
-        ): (series.averageRate < 0) ? (
-          <DecreasingIcon size={20} />
-        ): (
-          <NeutralIcon size={20} />
-        )}
-      </span>
-      <div className="flex gap-2 text-muted-foreground">
-        <span className="flex-1 flex justify-start items-center gap-1 whitespace-nowrap">
-          <span className="flex items-center gap-0">
-            <CountIcon size={16} />
-            <ResourceIcon size={16} />
+    <div className="flex flex-col gap-2 bg-card border rounded-md p-3" {...props}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          <span className="font-medium">
+            {resourceName}
           </span>
-          {currentAmountString}
-        </span>
-        <span className="flex-1 flex justify-start items-center gap-1 whitespace-nowrap">
-          <span className="flex items-center gap-0">
-            <TotalRateIcon size={16} />
-            <ResourceIcon size={16} />
+        </div>
+        <div className="flex items-baseline gap-1">
+          <span className="font-medium text-lg">
+            {amount}
           </span>
-          {averageRateString}/s
-        </span>
-        <span className="flex-1 flex justify-start items-center gap-1 whitespace-nowrap">
-          <span className="flex items-center gap-0">
-            <ProductionRateIcon size={16} />
-            <ResourceIcon size={16} />
+          <span className="text-muted-foreground size-sm">
+            in storage
           </span>
-          {averageProductionString}/s
-        </span>
-        <span className="flex-1 flex justify-start items-center gap-1 whitespace-nowrap">
-          <span className="flex items-center gap-0">
-            <ConsumptionRateIcon size={16} />
-            <ResourceIcon size={16} />
-          </span>
-          {averageConsumptionString}/s
-        </span>
+        </div>
       </div>
-      <ChartContainer config={config} className="h-30 w-full">
+      <ChartContainer config={config} className="h-30 w-full bg-muted">
         <AreaChart
           data={series.points}
           responsive={true}
@@ -170,6 +149,52 @@ export function ThroughputChartCard({
           />
         </AreaChart>
       </ChartContainer>
+      <Separator />
+      <div className="flex gap-3">
+        <div className="flex-1 flex flex-col">
+          <div className="flex items-center gap-1">
+            <ProductionRateIcon size={13} className="text-green-800" />
+            <span className="text-muted-foreground text-xs">
+              Produced
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="font-medium pl-1">
+              {productionRate}/s
+            </span>
+          </div>
+        </div>
+        <Separator orientation="vertical" />
+        <div className="flex-1 flex flex-col">
+          <div className="flex items-center gap-1">
+            <ConsumptionRateIcon size={13} className="text-red-800" />
+            <span className="text-muted-foreground text-xs">
+              Consumed
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="font-medium pl-1">
+              {consumptionRate}/s
+            </span>
+          </div>
+        </div>
+        <Separator orientation="vertical" />
+        <div className="flex-1 flex flex-col">
+          <div className="flex items-center gap-1">
+            <span className="text-muted-foreground text-xs">
+              Net
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className={cn(
+              "font-medium pl-1",
+              series.averageRate > 0 ? "text-green-800" : series.averageRate < 0 ? "text-red-800" : "text-foreground"
+            )}>
+              {netRate}/s
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
