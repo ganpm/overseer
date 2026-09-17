@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { PowerChartData } from "pkg/overseer";
 import {
   CartesianGrid,
@@ -15,25 +14,10 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import {
-  Zap as PowerIcon,
-  ChevronsDown as MaximumConsumptionIcon,
-  ChevronsUp as MaximumGenerationIcon,
-  ChevronsUpDown as NetMaximumPowerIcon,
-  ChevronDown as CurrentConsumptionIcon,
-  ChevronUp as CurrentGenerationIcon,
-  ChevronsDownUp as NetCurrentPowerIcon,
+  Zap as PowerIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SAMPLE_INTERVAL_MS } from "@/game/game-context.tsx";
-
-interface Field {
-  key: keyof PowerChartData;
-  label: string;
-  icon: React.ReactNode;
-  value: number;
-  checked: boolean;
-  setChecked: () => void;
-}
 
 const config = {
   maximumConsumption: {
@@ -63,11 +47,46 @@ const config = {
 } satisfies ChartConfig;
 
 
-const unsignedFormat = (number: number) => number.toLocaleString(undefined, {
+const unsignedFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
   signDisplay: "never",
-})
+});
+
+const signedFormatter = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+  signDisplay: "exceptZero",
+});
+
+interface GridStatusProps {
+  production: number;
+  consumption: number;
+}
+
+function GridStatus({ production, consumption }: GridStatusProps) {
+  return (
+    <span className={cn(
+      "px-2 py-0.5 rounded-md text-xs",
+      consumption === 0 ?
+        "text-muted-foreground bg-muted" :
+      production === 0 ?
+        "text-red-800 bg-red-100" :
+      production < consumption ?
+        "text-yellow-800 bg-yellow-100" :
+        "text-green-800 bg-green-100"
+    )}
+    >
+      {consumption === 0 ?
+        "No Demand" :
+      production === 0 ?
+        "Blackout" :
+      production < consumption ?
+        "Brownout" :
+        "Stable"}
+    </span>
+  );
+}
 
 export interface PowerChartCardProps extends React.HTMLAttributes<HTMLDivElement> {
   series: PowerChartData;
@@ -90,91 +109,30 @@ export function PowerChartCard({
     return tick;
   }
 
-  const [showMaximumConsumption, setShowMaximumConsumption] = useState<boolean>(false);
-  const [showMaximumGeneration, setShowMaximumGeneration] = useState<boolean>(false);
-  const [showNetMaximumPower, setShowNetMaximumPower] = useState<boolean>(false);
-  const [showCurrentConsumption, setShowCurrentConsumption] = useState<boolean>(true);
-  const [showCurrentGeneration, setShowCurrentGeneration] = useState<boolean>(true);
-  const [showNetCurrentPower, setShowNetCurrentPower] = useState<boolean>(true);
-
-  const fields: Field[] = [
-    {
-      key: "averageCurrentConsumption",
-      label: "Consumption",
-      icon: <CurrentConsumptionIcon size={16} />,
-      value: series.averageCurrentConsumption,
-      checked: showCurrentConsumption,
-      setChecked: () => setShowCurrentConsumption((prev) => !prev),
-    },
-    {
-      key: "averageCurrentGeneration",
-      label: "Generation",
-      icon: <CurrentGenerationIcon size={16} />,
-      value: series.averageCurrentGeneration,
-      checked: showCurrentGeneration,
-      setChecked: () => setShowCurrentGeneration((prev) => !prev),
-    },
-    {
-      key: "averageNetCurrentPower",
-      label: "Net Power",
-      icon: <NetCurrentPowerIcon size={16} />,
-      value: series.averageNetCurrentPower,
-      checked: showNetCurrentPower,
-      setChecked: () => setShowNetCurrentPower((prev) => !prev),
-    },
-    {
-      key: "averageMaximumConsumption",
-      label: "Max Consumption",
-      icon: <MaximumConsumptionIcon size={16} />,
-      value: series.averageMaximumConsumption,
-      checked: showMaximumConsumption,
-      setChecked: () => setShowMaximumConsumption((prev) => !prev),
-    },
-    {
-      key: "averageMaximumGeneration",
-      label: "Max Generation",
-      icon: <MaximumGenerationIcon size={16} />,
-      value: series.averageMaximumGeneration,
-      checked: showMaximumGeneration,
-      setChecked: () => setShowMaximumGeneration((prev) => !prev)
-    },
-    {
-      key: "averageNetMaximumPower",
-      label: "Net Max Power",
-      icon: <NetMaximumPowerIcon size={16} />,
-      value: series.averageNetMaximumPower,
-      checked: showNetMaximumPower,
-      setChecked: () => setShowNetMaximumPower((prev) => !prev)
-    },
-  ];
+  const currentProduction = unsignedFormatter.format(series.averageCurrentGeneration);
+  const currentConsumption = unsignedFormatter.format(series.averageCurrentConsumption);
+  const netCurrentPower = signedFormatter.format(series.averageNetCurrentPower);
+  const maximumConsumption = unsignedFormatter.format(series.averageMaximumConsumption);
+  const maximumProduction = unsignedFormatter.format(series.averageMaximumGeneration);
+  const netMaximumPower = signedFormatter.format(series.averageNetMaximumPower);
 
   return (
-    <div className="flex flex-col gap-3 border rounded-md p-3" {...props}>
-      <div className="flex flex-col gap-1">
-        {fields.map(({ key, label, icon, value, checked, setChecked}) => (
-          <div
-            key={key}
-            className={cn(
-              "flex cursor-pointer",
-              checked ? "text-foreground" : "text-muted-foreground",
-              checked ? "hover:text-muted-foreground" : "hover:text-foreground"
-            )}
-            onClick={setChecked}
-          >
-            <div className="flex-1 flex items-center gap-2">
-              <span className="flex items-center gap-0">
-                {icon}
-                <PowerIcon size={16} />
-              </span>
-              {label}
-            </div>
-            <div className="flex-1 flex justify-end items-center mr-5">
-              {unsignedFormat(value)} MW
-            </div>
-          </div>
-        ))}
+    <div className="flex flex-col gap-2 bg-card border rounded-md p-3" {...props}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          <PowerIcon size={14} />
+          <span className="font-medium">
+            Main Power Grid
+          </span>
+        </div>
+        <div className="flex items-center">
+          <GridStatus
+            production={series.averageCurrentGeneration}
+            consumption={series.averageCurrentConsumption}
+          />
+        </div>
       </div>
-      <ChartContainer config={config} className="h-30 w-full">
+      <ChartContainer config={config} className="h-30 w-full bg-muted">
         <LineChart
           data={series.points}
           responsive={true}
@@ -183,6 +141,7 @@ export function PowerChartCard({
           <CartesianGrid />
           <YAxis
             type="number"
+            unit=" MW"
             width="auto"
             tickLine={true}
             axisLine={true}
@@ -199,83 +158,134 @@ export function PowerChartCard({
             domain={[domainMin, domainMax]}
             allowDataOverflow={true}
           />
+          <Line
+            name="Maximum Consumption"
+            unit=" MW"
+            dataKey="maximumConsumption"
+            type="stepAfter"
+            stroke={config.maximumConsumption.color}
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            dot={false}
+            animationDuration={SAMPLE_INTERVAL_MS}
+            animationMatchBy={matchByDataKey("timestamp")}
+            animationEasing="linear"
+          />
+          <Line
+            name="Maximum Generation"
+            unit=" MW"
+            dataKey="maximumGeneration"
+            type="stepAfter"
+            stroke={config.maximumGeneration.color}
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            dot={false}
+            animationDuration={SAMPLE_INTERVAL_MS}
+            animationMatchBy={matchByDataKey("timestamp")}
+            animationEasing="linear"
+          />
+          <Line
+            name="Current Consumption"
+            unit=" MW"
+            dataKey="currentConsumption"
+            type="stepAfter"
+            stroke={config.currentConsumption.color}
+            strokeWidth={2}
+            dot={false}
+            animationDuration={SAMPLE_INTERVAL_MS}
+            animationMatchBy={matchByDataKey("timestamp")}
+            animationEasing="linear"
+          />
+          <Line
+            name="Current Generation"
+            unit=" MW"
+            dataKey="currentGeneration"
+            type="stepAfter"
+            stroke={config.currentGeneration.color}
+            strokeWidth={2}
+            dot={false}
+            animationDuration={SAMPLE_INTERVAL_MS}
+            animationMatchBy={matchByDataKey("timestamp")}
+            animationEasing="linear"
+          />
           <ChartTooltip
             content={<ChartTooltipContent className="w-40" />}
           />
-          {showMaximumConsumption && (
-            <Line
-              dataKey="maximumConsumption"
-              type="stepAfter"
-              stroke={config.maximumConsumption.color}
-              strokeWidth={2}
-              dot={false}
-              animationDuration={SAMPLE_INTERVAL_MS}
-              animationMatchBy={matchByDataKey("timestamp")}
-              animationEasing="linear"
-            />
-          )}
-          {showMaximumGeneration && (
-            <Line
-              dataKey="maximumGeneration"
-              type="stepAfter"
-              stroke={config.maximumGeneration.color}
-              strokeWidth={2}
-              dot={false}
-              animationDuration={SAMPLE_INTERVAL_MS}
-              animationMatchBy={matchByDataKey("timestamp")}
-              animationEasing="linear"
-            />
-          )}
-          {showCurrentConsumption && (
-            <Line
-              dataKey="currentConsumption"
-              type="stepAfter"
-              stroke={config.currentConsumption.color}
-              strokeWidth={2}
-              dot={false}
-              animationDuration={SAMPLE_INTERVAL_MS}
-              animationMatchBy={matchByDataKey("timestamp")}
-              animationEasing="linear"
-            />
-          )}
-          {showCurrentGeneration && (
-            <Line
-              dataKey="currentGeneration"
-              type="stepAfter"
-              stroke={config.currentGeneration.color}
-              strokeWidth={2}
-              dot={false}
-              animationDuration={SAMPLE_INTERVAL_MS}
-              animationMatchBy={matchByDataKey("timestamp")}
-              animationEasing="linear"
-            />
-          )}
-          {showNetMaximumPower && (
-            <Line
-              dataKey="netMaximumPower"
-              type="stepAfter"
-              stroke={config.netMaximumPower.color}
-              strokeWidth={2}
-              dot={false}
-              animationDuration={SAMPLE_INTERVAL_MS}
-              animationMatchBy={matchByDataKey("timestamp")}
-              animationEasing="linear"
-            />
-          )}
-          {showNetCurrentPower && (
-            <Line
-              dataKey="netCurrentPower"
-              type="stepAfter"
-              stroke={config.netCurrentPower.color}
-              strokeWidth={2}
-              dot={false}
-              animationDuration={SAMPLE_INTERVAL_MS}
-              animationMatchBy={matchByDataKey("timestamp")}
-              animationEasing="linear"
-            />
-          )}
         </LineChart>
       </ChartContainer>
+      <div className="grid grid-cols-[1fr_auto_auto] gap-3">
+
+        <div className="flex border-b">
+          <span>
+            &nbsp;
+          </span>
+        </div>
+        <div className="flex border-b items-center justify-center">
+          <span className="text-muted-foreground text-xs">
+            Current
+          </span>
+        </div>
+        <div className="flex border-b items-center justify-center">
+          <span className="text-muted-foreground text-xs">
+            Theoretical max
+          </span>
+        </div>
+
+        <div className="flex border-b items-center justify-start">
+          <span className="text-muted-foreground">
+            Production
+          </span>
+        </div>
+        <div className="flex border-b items-center justify-end">
+          <span className="font-medium">
+            {currentProduction} MW
+          </span>
+        </div>
+        <div className="flex border-b items-center justify-end">
+          <span>
+            {maximumProduction} MW
+          </span>
+        </div>
+
+        <div className="flex border-b items-center justify-start">
+          <span className="text-muted-foreground">
+            Consumption
+          </span>
+        </div>
+        <div className="flex border-b items-center justify-end">
+          <span className="font-medium">
+            {currentConsumption} MW
+          </span>
+        </div>
+        <div className="flex border-b items-center justify-end">
+          <span>
+            {maximumConsumption} MW
+          </span>
+        </div>
+
+        <div className="flex border-b items-center justify-start">
+          <span className="text-muted-foreground">
+            Net power
+          </span>
+        </div>
+        <div className={cn(
+          "flex border-b items-center justify-end",
+          series.averageNetCurrentPower < 0 ? "text-red-800" : "text-green-800"
+        )}>
+          <span className="font-medium">
+            {netCurrentPower} MW
+          </span>
+        </div>
+        <div className={cn(
+          "flex border-b items-center justify-end",
+          series.averageNetMaximumPower < 0 ? "text-red-800" : "text-green-800"
+        )}>
+          <span>
+            {netMaximumPower} MW
+          </span>
+        </div>
+
+      </div>
     </div>
   );
 }
