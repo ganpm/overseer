@@ -244,8 +244,16 @@ pub struct Game {
 
 #[wasm_bindgen]
 impl Game {
+
     #[wasm_bindgen(constructor)]
-    pub fn new(json_data: JSONGameData, sample_length: usize, sample_interval: f64) -> Result<Game, JsValue> {
+    pub fn new(
+        #[wasm_bindgen(js_name = "jsonData")]
+        json_data: JSONGameData,
+        #[wasm_bindgen(js_name = "sampleLength")]
+        sample_length: usize,
+        #[wasm_bindgen(js_name = "sampleInterval")]
+        sample_interval: f64
+    ) -> Result<Game, JsValue> {
         let data = Self::create_data_from(&json_data);
         let catalog = Self::create_catalog_from(&json_data, &data);
         Ok(Game {
@@ -291,8 +299,11 @@ impl Game {
     #[wasm_bindgen(js_name = "addBuilding")]
     pub fn add_building(
         &mut self,
+        #[wasm_bindgen(js_name = "buildingName")]
         building_name: &str,
+        #[wasm_bindgen(js_name = "processName")]
         process_name: &str,
+        #[wasm_bindgen(js_name = "count")]
         count: i32,
     ) -> Result<(), JsValue> {
         if count == 0 {
@@ -404,8 +415,11 @@ impl Game {
     #[wasm_bindgen(js_name = "setBuildingCycleSpeed")]
     pub fn set_building_cycle_speed(
         &mut self,
+        #[wasm_bindgen(js_name = "buildingName")]
         building_name: &str,
+        #[wasm_bindgen(js_name = "processName")]
         process_name: &str,
+        #[wasm_bindgen(js_name = "cycleSpeedMult")]
         cycle_speed_mult: f64
     ) -> Result<(), JsValue> {
 
@@ -419,8 +433,11 @@ impl Game {
     #[wasm_bindgen(js_name = "setBuildingEnabled")]
     pub fn set_building_enabled(
         &mut self,
+        #[wasm_bindgen(js_name = "buildingName")]
         building_name: &str,
+        #[wasm_bindgen(js_name = "processName")]
         process_name: &str,
+        #[wasm_bindgen(js_name = "enabled")]
         enabled: bool
     ) -> Result<(), JsValue> {
 
@@ -432,7 +449,11 @@ impl Game {
     }
 
     #[wasm_bindgen(js_name = "tick")]
-    pub fn tick(&mut self, delta_ms: f64) -> Result<bool, JsValue> {
+    pub fn tick(
+        &mut self,
+        #[wasm_bindgen(js_name = "deltaMs")]
+        delta_ms: f64
+    ) -> Result<bool, JsValue> {
         if !delta_ms.is_finite() {
             return Err(JsValue::from_str("Delta seconds must be finite"));
         }
@@ -563,7 +584,11 @@ impl Game {
     }
 
     #[wasm_bindgen(js_name = "samplePowerData")]
-    pub fn sample_power_data(&mut self, timestamp: f64) {
+    pub fn sample_power_data(
+        &mut self,
+        #[wasm_bindgen(js_name = "timestamp")]
+        timestamp: f64
+    ) {
         let mut tracker = self.power_tracker.take().unwrap_or_else(|| {
             (0..self.sample_length)
                 .map(|i| PowerDataPoint {
