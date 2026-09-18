@@ -19,7 +19,7 @@ import {
   ArrowUp as ProductionRateIcon,
   ArrowDown as ConsumptionRateIcon,
 } from "lucide-react";
-import { SAMPLE_INTERVAL_MS } from "@/game/game-context.tsx";
+import { SAMPLE_INTERVAL_MS } from "@/context/game";
 
 export interface ThroughputChartCardProps extends React.HTMLAttributes<HTMLDivElement> {
   series: ThroughputChartData;

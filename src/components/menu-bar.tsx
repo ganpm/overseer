@@ -1,12 +1,9 @@
 import { cn } from "@/lib/utils";
-import {
-  Pause as PauseIcon,
-  Play as PlayIcon,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { usePause } from "@/game/game-hooks";
+import { PauseButton } from "@/features/simulation/pause-button";
+import { ToggleThemeButton } from "@/features/theme/toggle-theme-button";
 
-const pauseColor = "var(--primary)";
+
+
 
 export interface MenuBarProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string;
@@ -17,28 +14,21 @@ export function MenuBar({
   className,
   ...props
 }: MenuBarProps) {
-  const [pause, togglePause] = usePause();
   return (
     <div
-      className={cn([
+      className={cn(
         "text-foreground text-base font-medium",
-        "flex items-center",
+        "flex items-center justify-between",
         className
-      ])}
+      )}
       {...props}
     >
-      <span className="flex-1 flex items-center justify-start">{title}</span>
-      <div className="flex-1 flex items-center justify-end">
-        <span className="flex items-center gap-2 text-sm text-muted-foreground">
-          {pause && ("Paused")}
-          <Button variant="outline" onClick={togglePause}>
-            {pause ? (
-              <PauseIcon fill={pauseColor} stroke={pauseColor} />
-            ) : (
-              <PlayIcon fill={pauseColor} stroke={pauseColor} />
-            )}
-          </Button>
-        </span>
+      <span className="flex items-center justify-start">
+        {title}
+      </span>
+      <div className="flex items-center justify-end gap-2">
+        <ToggleThemeButton />
+        <PauseButton className="w-23" />
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { TICK_INTERVAL_MS } from "@/game/game-context";
-import { usePause } from "@/game/game-hooks";
+import { TICK_INTERVAL_MS } from "@/context/game";
+import { usePause } from "@/hooks/game";
 
 interface ContinuousProgressBarProps {
   active: boolean;

@@ -17,7 +17,7 @@ import {
   Zap as PowerIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SAMPLE_INTERVAL_MS } from "@/game/game-context.tsx";
+import { SAMPLE_INTERVAL_MS } from "@/context/game";
 
 const config = {
   maximumConsumption: {

@@ -1,10 +1,10 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import '@/index.css'
-import { App } from '@/App.tsx'
-import { GameProvider } from '@/game/game-context.tsx'
+import { StrictMode } from "react"
+import { createRoot } from "react-dom/client"
+import "@/index.css"
+import { App } from "@/App"
+import { GameProvider } from "@/context/game"
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <GameProvider>
       <App />

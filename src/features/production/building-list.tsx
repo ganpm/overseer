@@ -1,5 +1,5 @@
 import type { BuildingGroupInstance } from "pkg/overseer";
-import { useGameStore } from "@/game/game-context";
+import { useGameStore } from "@/context/game";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

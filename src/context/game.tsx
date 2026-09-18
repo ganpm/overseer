@@ -6,9 +6,9 @@ import {
   type ReactNode,
 } from "react";
 import init, { Game } from "pkg/overseer";
-import gameData from "@/game/game-data.json";
-import { validateGameData } from "@/game/game-data.schema";
-import { GameStore } from "@/game/game-store";
+import gameData from "@/data/game.json";
+import { validateGameData } from "@/schema/game";
+import { GameStore } from "@/store/game";
 import { Spinner } from "@/components/ui/spinner";
 
 

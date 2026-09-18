@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   useCatalog,
   useGameSnapshot,
-} from "@/game/game-hooks";
+} from "@/hooks/game";
 import {
   Accordion,
   AccordionContent,

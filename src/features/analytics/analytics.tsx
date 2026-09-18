@@ -3,7 +3,7 @@ import type { ThroughputChartData } from "pkg/overseer";
 import {
   useThroughputChartData,
   usePowerChartData,
-} from "@/game/game-hooks";
+} from "@/hooks/game";
 import {
   Accordion,
   AccordionContent,
