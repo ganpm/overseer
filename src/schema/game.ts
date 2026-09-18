@@ -39,7 +39,7 @@ const BuildingSchema = z.object({
 
 type BuildingSchemaType = z.output<typeof BuildingSchema>;
 
-const JSONGameDataSchema = z.object({
+export const GameDataSchema = z.object({
   resources: z.array(ResourceSchema),
   processes: z.array(ProcessSchema),
   buildings: z.array(BuildingSchema),
@@ -73,12 +73,7 @@ const JSONGameDataSchema = z.object({
   }
 });
 
-type JSONGameDataSchemaType = z.output<typeof JSONGameDataSchema>;
-
-// Validates the provided game data against the expected schema.
-// Throws an error if the data is invalid.
-export const validateGameData = (data: unknown): JSONGameData =>
-  JSONGameDataSchema.parse(data);
+type GameDataSchemaType = z.output<typeof GameDataSchema>;
 
 // Strict type equality check for TypeScript types
 type Equal<A, B> =
@@ -101,5 +96,5 @@ export type SchemaTypeAssertions = [
   Expect<Equal<ResourceAmount, ResourceAmountSchemaType>>,
   Expect<Equal<Process, ProcessSchemaType>>,
   Expect<Equal<Building, BuildingSchemaType>>,
-  Expect<Equal<JSONGameData, JSONGameDataSchemaType>>,
+  Expect<Equal<JSONGameData, GameDataSchemaType>>,
 ];

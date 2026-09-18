@@ -6,8 +6,8 @@ import {
   type ReactNode,
 } from "react";
 import init, { Game } from "pkg/overseer";
-import gameData from "@/data/game.json";
-import { validateGameData } from "@/schema/game";
+import JSONGameData from "@/data/game.json";
+import { GameDataSchema } from "@/schema/game";
 import { GameStore } from "@/store/game";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -61,8 +61,8 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     void init()
       .then(() => {
         if (cancelled) return;
-        const validatedGameData = validateGameData(gameData);
-        const game = new Game(validatedGameData, SAMPLE_LENGTH, SAMPLE_INTERVAL_MS);
+        const GameData = GameDataSchema.parse(JSONGameData);
+        const game = new Game(GameData, SAMPLE_LENGTH, SAMPLE_INTERVAL_MS);
         const now = performance.now();
         game.sampleThroughputData(now);
         game.samplePowerData(now);
