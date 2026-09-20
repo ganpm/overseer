@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import init, { Game } from "pkg/overseer";
@@ -53,7 +54,11 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   
   const [isContentVisible, setIsContentVisible] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
-  const [pause, setPause] = useState(false);
+  
+  const pause = useSyncExternalStore(
+    store?.subscribe ?? (() => () => {}),
+    () => store?.getPause() ?? false,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -76,12 +81,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (!store) return;
-    setPause(store.getPause());
-    return store.subscribe(() => setPause(store.getPause()));
-  }, [store]);
 
   useEffect(() => {
     if (!store || pause) return;
@@ -180,6 +179,6 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
 export const useGameStore = (): GameStore => {
   const store = useContext(GameStoreContext);
-  if (!store) throw new Error("useGame must be used within a GameProvider");
+  if (!store) throw new Error("useGameStore must be used within a GameProvider");
   return store;
 };
