@@ -232,7 +232,7 @@ pub struct Game {
     power_data: PowerData,
 
     /// Internal variable for tracking power history over time
-    power_tracker: Option<VecDeque<PowerDataPoint>>,
+    power_tracker: VecDeque<PowerDataPoint>,
 
     /// Lookup table for all the data loaded into the game.
     data: GameData,
@@ -256,6 +256,7 @@ impl Game {
     ) -> Result<Game, JsValue> {
         let data = Self::create_data_from(&json_data);
         let catalog = Self::create_catalog_from(&json_data, &data);
+        let power_tracker = Self::create_power_tracker_from(sample_length, sample_interval as u32);
         Ok(Game {
             inventory: HashMap::new(),
             buildings: HashMap::new(),
@@ -264,7 +265,7 @@ impl Game {
             throughput_data: HashMap::new(),
             throughput_tracker: HashMap::new(),
             power_data: PowerData::default(),
-            power_tracker: None,
+            power_tracker,
             data,
             catalog,
         })
@@ -551,19 +552,7 @@ impl Game {
 
     #[wasm_bindgen(js_name = "getPowerChartData")]
     pub fn get_power_chart_data(&self) -> PowerChartData {
-        let points: Vec<PowerDataPoint> = self.power_tracker.clone().unwrap_or_else(|| {
-            (0..self.sample_length)
-                .map(|_| PowerDataPoint {
-                    timestamp: 0.0,
-                    maximum_consumption: 0.0,
-                    maximum_generation: 0.0,
-                    net_maximum_power: 0.0,
-                    current_consumption: 0.0,
-                    current_generation: 0.0,
-                    net_current_power: 0.0,
-                })
-                .collect()
-        }).into();
+        let points = self.power_tracker.iter().cloned().collect::<Vec<_>>();
         let average_maximum_consumption = points.iter().map(|p| p.maximum_consumption).sum::<f64>() / self.sample_length as f64;
         let average_maximum_generation = points.iter().map(|p| p.maximum_generation).sum::<f64>() / self.sample_length as f64;
         let average_net_maximum_power = points.iter().map(|p| p.net_maximum_power).sum::<f64>() / self.sample_length as f64;
@@ -579,7 +568,7 @@ impl Game {
             average_current_consumption,
             average_current_generation,
             average_net_current_power,
-            points: points.iter().cloned().collect(),
+            points,
         }
     }
 
@@ -589,20 +578,7 @@ impl Game {
         #[wasm_bindgen(js_name = "timestamp")]
         timestamp: f64
     ) {
-        let mut tracker = self.power_tracker.take().unwrap_or_else(|| {
-            (0..self.sample_length)
-                .map(|i| PowerDataPoint {
-                    timestamp: timestamp - (((self.sample_length - 1 - i) as f64) * self.sample_interval),
-                    maximum_consumption: 0.0,
-                    maximum_generation: 0.0,
-                    net_maximum_power: 0.0,
-                    current_consumption: 0.0,
-                    current_generation: 0.0,
-                    net_current_power: 0.0,
-                })
-                .collect()
-        });
-        tracker.push_back(PowerDataPoint {
+        self.power_tracker.push_back(PowerDataPoint {
             timestamp,
             maximum_consumption: self.power_data.maximum_consumption,
             maximum_generation: self.power_data.maximum_generation,
@@ -611,10 +587,7 @@ impl Game {
             current_generation: self.power_data.current_generation,
             net_current_power: self.power_data.current_generation + self.power_data.current_consumption,
         });
-        while tracker.len() > self.sample_length {
-            tracker.pop_front();
-        }
-        self.power_tracker = Some(tracker);
+        self.power_tracker.pop_front();
     }
 }
 
@@ -674,6 +647,23 @@ impl Game {
             generation_buildings,
             building_entries,
         }
+    }
+
+    fn create_power_tracker_from(
+        sample_length: usize,
+        sample_interval: u32
+    ) -> VecDeque<PowerDataPoint> {
+        (0..sample_length)
+            .map(|i| PowerDataPoint {
+                timestamp: 0.0 - (((sample_length - 1 - i) as f64) * sample_interval as f64),
+                maximum_consumption: 0.0,
+                maximum_generation: 0.0,
+                net_maximum_power: 0.0,
+                current_consumption: 0.0,
+                current_generation: 0.0,
+                net_current_power: 0.0,
+            })
+            .collect()
     }
 
     fn consume_inputs(
