@@ -219,7 +219,10 @@ pub struct Game {
     /// The currently constructed buildings and the processes they are currently running.
     buildings: HashMap<(String, String), BuildingGroupInstance>,
 
+    /// The length of the sample window for tracking throughput and power data.
     sample_length: usize,
+
+    /// The interval at which samples are taken for tracking throughput and power data.
     sample_interval: f64,
 
     /// Accumulator for tracking the flow of resources produced and consumed during a single tick of the game.
@@ -469,20 +472,8 @@ impl Game {
         // Distribute power for the current game tick
         self.tick_power_allocation();
 
-        let Game { inventory, ..} = self;
-
-        let mut changed = false;
-
-        // Note: |= on purpose, not || because || short-circuits and we want to tick all groups even if one returns true.
-
-        self.buildings.values_mut().filter(|group| group.enabled).for_each(|group| {
-            changed |= Self::tick_group(
-                group,
-                inventory,
-                &mut self.throughput_data,
-                delta_ms,
-            );
-        });
+        // Tick resource production for all building groups and determine if any state has changed.
+        let changed = self.tick_resource_production(delta_ms);
 
         Ok(changed)
     }
@@ -709,7 +700,6 @@ impl Game {
         }
     }
 
-
     /// Loads inputs from the shared inventory into each enabled group's input buffer.
     /// The input priority is determined by the order of declaration in the catalog.
     /// By convention, groups declared earlier in the catalog are in the beginning of the production chain,
@@ -739,7 +729,11 @@ impl Game {
         }
     }
 
-    pub fn tick_power_allocation(&mut self) {
+    /// Allocates power to each building group based on their active count and power requirements.
+    /// If a building group is not currently active, its potential power consumption is calculated based on the number of buildings that can start.
+    /// Allocated power does not mean that the power actually being consumed; 
+    /// If the building has enough input resource to start, power is allocated to it so it is included in the power calculation, and can now start.
+    fn tick_power_allocation(&mut self) {
         let mut maximum_power_consumption = 0.0;
         let mut maximum_power_generation = 0.0;
         let mut current_power_consumption = 0.0;
@@ -796,6 +790,22 @@ impl Game {
             });
     }
 
+    /// Tick resource production for all building groups and return whether any state has changed.
+    fn tick_resource_production(&mut self, delta_ms: f64) -> bool {
+        let mut changed = false;
+
+        self.buildings
+            .values_mut()
+            .filter(|group| group.enabled)
+            .for_each(|group| {
+                // Note: |= on purpose, not || because || short-circuits and we want to tick all groups even if one returns true.
+                changed |= Self::tick_group(group, &mut self.inventory, &mut self.throughput_data, delta_ms);
+            });
+
+        changed
+    }
+
+    /// Tick a single building group and return whether its state has changed.
     fn tick_group(
         group: &mut BuildingGroupInstance,
         inventory: &mut HashMap<String, i32>,
