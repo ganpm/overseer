@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -54,6 +55,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   
   const [isContentVisible, setIsContentVisible] = useState(false);
   const [showLoader, setShowLoader] = useState(true);
+
+  // Internal game time in milliseconds
+  const tick = useRef(0);
+  const nextTick = (delta: number = TICK_INTERVAL_MS) => {
+    tick.current += delta;
+  };
   
   const pause = useSyncExternalStore(
     store?.subscribe ?? (() => () => {}),
@@ -68,11 +75,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         if (cancelled) return;
         const GameData = GameDataSchema.parse(JSONGameData);
         const game = new Game(GameData, SAMPLE_LENGTH, SAMPLE_INTERVAL_MS);
-        const now = performance.now();
-        game.sampleThroughputData(now);
-        game.samplePowerData(now);
         setStore(new GameStore(game));
-
       })
       .catch((error: unknown) => {
         if (!cancelled) setInitErrorMessage(getErrorMessage(error));
@@ -86,35 +89,21 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     if (!store || pause) return;
 
     // Set up the game tick interval
-    let lastTick = performance.now();
-    let tickAccumulatorMs = 0;
+    let tickLastSample = tick.current;
     const tickIntervalId = window.setInterval(() => {
-      const now = performance.now();
-      tickAccumulatorMs += now - lastTick;
-      lastTick = now;
-      while (tickAccumulatorMs >= TICK_INTERVAL_MS) {
-        store.tick(TICK_INTERVAL_MS);
-        tickAccumulatorMs -= TICK_INTERVAL_MS;
-      }
-    }, TICK_INTERVAL_MS);
+      store.tick(TICK_INTERVAL_MS);
+      nextTick();
 
-    // Set up the sample interval
-    // Sampling also refreshes the chart data
-    let lastSample = performance.now();
-    let sampleAccumulatorMs = 0;
-    const sampleIntervalId = window.setInterval(() => {
-      const now = performance.now();
-      sampleAccumulatorMs += now - lastSample;
-      lastSample = now;
-      if (sampleAccumulatorMs >= SAMPLE_INTERVAL_MS) {
-        store.sample(now);
-        sampleAccumulatorMs -= SAMPLE_INTERVAL_MS;
+      // Sample the game data at regular intervals
+      if (tick.current - tickLastSample >= SAMPLE_INTERVAL_MS) {
+        tickLastSample = tick.current;
+        store.sample(tickLastSample);
       }
-    }, SAMPLE_INTERVAL_MS);
+
+    }, TICK_INTERVAL_MS);
 
     return () => {
       window.clearInterval(tickIntervalId);
-      window.clearInterval(sampleIntervalId);
     };
   }, [store, pause]);
 
