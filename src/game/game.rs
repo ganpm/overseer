@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque, hash_map::Entry};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
+use crate::game::error::GameError;
 
 /// Represents a resource in the game.
 #[derive(Tsify, Serialize, Deserialize, Clone)]
@@ -256,11 +257,11 @@ impl Game {
         sample_length: usize,
         #[wasm_bindgen(js_name = "sampleInterval")]
         sample_interval: f64
-    ) -> Result<Game, JsValue> {
+    ) -> Game {
         let data = Self::create_data_from(&json_data);
         let catalog = Self::create_catalog_from(&json_data, &data);
         let power_tracker = Self::create_power_tracker_from(sample_length, sample_interval as u32);
-        Ok(Game {
+        Game {
             inventory: HashMap::new(),
             buildings: HashMap::new(),
             sample_length,
@@ -271,7 +272,7 @@ impl Game {
             power_tracker,
             data,
             catalog,
-        })
+        }
     }
 
     #[wasm_bindgen(getter)]
@@ -309,24 +310,9 @@ impl Game {
         process_name: &str,
         #[wasm_bindgen(js_name = "count")]
         count: i32,
-    ) -> Result<(), JsValue> {
+    ) -> Result<(), JsError> {
         if count == 0 {
             return Ok(());
-        }
-
-        let Some(building) = self.data.buildings.get(building_name) else {
-            return Err(JsValue::from_str(&format!(
-                "Building '{}' does not exist",
-                building_name
-            )));
-        };
-
-        if !building.process_options.iter().any(|p| p == process_name)
-        {
-            return Err(JsValue::from_str(&format!(
-                "Process '{}' is not available for building '{}'",
-                process_name, building_name
-            )));
         }
 
         let key = (building_name.to_string(), process_name.to_string());
@@ -341,6 +327,7 @@ impl Game {
             //     return Ok(()); 
             // }
 
+            // Match entry here instead of chaining since chaining does not allow for early returns with errors.
             match self.buildings.entry(key) {
                 Entry::Occupied(mut entry) => {
                     // Group already exists, pay for new buildings,
@@ -354,13 +341,29 @@ impl Game {
                     group.total_count = group.total_count.saturating_add(buildable);
                 },
                 Entry::Vacant(entry) => {
-                    let Some(process) = self.data.processes.get(process_name) else {
-                        return Err(JsValue::from_str(&format!(
-                            "Process '{}' does not exist",
-                            process_name
-                        )));
-                    };
+                    // Retrieve the building from the game data, returning an error if it doesn't exist.
+                    let building = self.data.buildings.get(building_name)
+                        .ok_or_else(|| GameError::BuildingNotFound {
+                            building_name: building_name.to_string(),
+                        })?;
 
+                    // Retrieve the process from the game data, returning an error if it doesn't exist.
+                    let process = self.data.processes.get(process_name)
+                        .ok_or_else(|| GameError::ProcessNotFound {
+                            process_name: process_name.to_string(),
+                        })?;
+
+                    // Check if the process is compatible with the building.
+                    building.process_options
+                        .iter()
+                        .any(|p| p == process_name)
+                        .then_some(())
+                        .ok_or_else(|| GameError::IncompatibleProcess {
+                            building_name: building_name.to_string(),
+                            process_name: process_name.to_string(),
+                        })?;
+
+                    // Pay the cost
                     //for cost in &building.cost {
                     //    *self.inventory.entry(cost.resource.clone()).or_insert(0.0) -=
                     //        cost.amount * buildable as f64;
@@ -425,13 +428,13 @@ impl Game {
         process_name: &str,
         #[wasm_bindgen(js_name = "cycleSpeedMult")]
         cycle_speed_mult: f64
-    ) -> Result<(), JsValue> {
+    ) {
 
         self.buildings
             .entry((building_name.to_string(), process_name.to_string()))
             .and_modify(|bgi| bgi.cycle_speed_mult = cycle_speed_mult);
 
-        Ok(())
+
     }
 
     #[wasm_bindgen(js_name = "setBuildingEnabled")]
@@ -443,13 +446,12 @@ impl Game {
         process_name: &str,
         #[wasm_bindgen(js_name = "enabled")]
         enabled: bool
-    ) -> Result<(), JsValue> {
+    ) {
 
         self.buildings
             .entry((building_name.to_string(), process_name.to_string()))
             .and_modify(|bgi| bgi.enabled = enabled);
 
-        Ok(())
     }
 
     #[wasm_bindgen(js_name = "tick")]
@@ -457,13 +459,10 @@ impl Game {
         &mut self,
         #[wasm_bindgen(js_name = "deltaMs")]
         delta_ms: f64
-    ) -> Result<bool, JsValue> {
-        if !delta_ms.is_finite() {
-            return Err(JsValue::from_str("Delta seconds must be finite"));
-        }
+    ) -> bool {
 
-        if delta_ms <= 0.0 {
-            return Ok(false);
+        if delta_ms <= 0.0 || !delta_ms.is_finite() {
+            return false;
         }
 
         // Distribute contested input resources into each group's buffer before groups try to start.
@@ -475,7 +474,7 @@ impl Game {
         // Tick resource production for all building groups and determine if any state has changed.
         let changed = self.tick_resource_production(delta_ms);
 
-        Ok(changed)
+        changed
     }
 
     #[wasm_bindgen(js_name = "getThroughputChartData")]
