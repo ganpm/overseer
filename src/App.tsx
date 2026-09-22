@@ -15,7 +15,7 @@ export const App = () => {
   const [title, setTitle] = useState<"Production" | "Analytics">("Production");
 
   return (
-    <div className="flex flex-col h-screen items-center w-full bg-foreground overflow-hidden">
+    <div className="flex flex-col h-screen items-center w-full bg-[oklch(0.269_0_0)] overflow-hidden">
       <Tabs defaultValue="production" className="flex-1 flex flex-col gap-2 min-h-0 w-full md:w-md bg-background">
         <MenuBar title={title} className="mx-4 mt-2" />
         <Separator />

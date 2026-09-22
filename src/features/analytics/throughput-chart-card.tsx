@@ -81,7 +81,7 @@ export function ThroughputChartCard({
   }
 
   return (
-    <div className="flex flex-col gap-2 bg-card border rounded-md p-3" {...props}>
+    <div className="flex flex-col gap-2 bg-card border border-border rounded-md p-3" {...props}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
           <span className="font-medium">

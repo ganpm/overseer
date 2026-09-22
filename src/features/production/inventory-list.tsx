@@ -1,14 +1,9 @@
 import {
-  Item,
-  ItemContent,
-  ItemTitle,
-  ItemActions,
-} from "@/components/ui/item";
-import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
+import { Fragment } from "react";
 import {
   SortController,
   type SortState,
@@ -35,8 +30,8 @@ export function InventoryList({
   sortConfigInventory,
 }: InventoryListProps) {
   return (
-    <div className="space-y-2">
-      <div className="flex gap-1">
+    <div className="flex flex-col gap-4 my-2">
+      <div className="flex gap-2">
         <InputGroup>
           <InputGroupInput
             placeholder="Search..."
@@ -65,17 +60,31 @@ export function InventoryList({
           Nothing in inventory matches the search query.
         </p>
       ) : (
-        <div className="space-y-2">
-          {inventory.map(({ resource, amount }) =>
-            <Item variant="outline" key={resource}>
-              <ItemContent>
-                <ItemTitle>{resource}</ItemTitle>
-              </ItemContent>
-              <ItemActions>
-                <span>{amount}</span>
-              </ItemActions>
-            </Item>
-          )}
+        <div className="grid grid-cols-[1fr_auto] gap-3 bg-card rounded-md border border-border p-3">
+          <div className="flex border-b border-border items-center justify-start">
+            <span className="text-muted-foreground text-xs">
+              Resource
+            </span>
+          </div>
+          <div className="flex border-b border-border items-center justify-center">
+            <span className="text-muted-foreground text-xs">
+              Amount
+            </span>
+          </div>
+          {inventory.map(({ resource, amount }) => (
+            <Fragment key={resource}>
+              <div className="flex border-b border-border items-center justify-start">
+                <span>
+                  {resource}
+                </span>
+              </div>
+              <div className="flex border-b border-border items-center justify-end">
+                <span className="font-medium">
+                  {amount}
+                </span>
+              </div>
+            </Fragment>
+          ))}
         </div>
       )}
     </div>

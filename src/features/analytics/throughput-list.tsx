@@ -34,8 +34,8 @@ export function ThroughputList({
   chartData,
 }: ThroughputListProps) {
   return (
-    <div className="space-y-2">
-      <div className="flex gap-1">
+    <div className="flex flex-col gap-4 my-2">
+      <div className="flex gap-2">
         <InputGroup>
           <InputGroupInput
             placeholder="Search..."
@@ -64,7 +64,7 @@ export function ThroughputList({
           No charts match the search query.
         </p>
       ) : (
-        <div className="flex flex-col space-y-2">
+        <div className="flex flex-col gap-4">
           {queriedCharts.map((series) =>
             <ThroughputChartCard key={series.resourceName} series={series} />
           )}

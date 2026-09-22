@@ -117,7 +117,7 @@ export function PowerChartCard({
   const netMaximumPower = signedFormatter.format(series.averageNetMaximumPower);
 
   return (
-    <div className="flex flex-col gap-2 bg-card border rounded-md p-3" {...props}>
+    <div className="flex flex-col gap-2 bg-card border border-border rounded-md p-3" {...props}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
           <PowerIcon size={14} />
@@ -215,61 +215,61 @@ export function PowerChartCard({
       </ChartContainer>
       <div className="grid grid-cols-[1fr_auto_auto] gap-3">
 
-        <div className="flex border-b">
+        <div className="flex border-b border-border">
           <span>
             &nbsp;
           </span>
         </div>
-        <div className="flex border-b items-center justify-center">
+        <div className="flex border-b border-border items-center justify-center">
           <span className="text-muted-foreground text-xs">
             Current
           </span>
         </div>
-        <div className="flex border-b items-center justify-center">
+        <div className="flex border-b border-border items-center justify-center">
           <span className="text-muted-foreground text-xs">
             Theoretical max
           </span>
         </div>
 
-        <div className="flex border-b items-center justify-start">
+        <div className="flex border-b border-border items-center justify-start">
           <span className="text-muted-foreground">
             Production
           </span>
         </div>
-        <div className="flex border-b items-center justify-end">
+        <div className="flex border-b border-border items-center justify-end">
           <span className="font-medium">
             {currentProduction} MW
           </span>
         </div>
-        <div className="flex border-b items-center justify-end">
+        <div className="flex border-b border-border items-center justify-end">
           <span>
             {maximumProduction} MW
           </span>
         </div>
 
-        <div className="flex border-b items-center justify-start">
+        <div className="flex border-b border-border items-center justify-start">
           <span className="text-muted-foreground">
             Consumption
           </span>
         </div>
-        <div className="flex border-b items-center justify-end">
+        <div className="flex border-b border-border items-center justify-end">
           <span className="font-medium">
             {currentConsumption} MW
           </span>
         </div>
-        <div className="flex border-b items-center justify-end">
+        <div className="flex border-b border-border items-center justify-end">
           <span>
             {maximumConsumption} MW
           </span>
         </div>
 
-        <div className="flex border-b items-center justify-start">
+        <div className="flex border-b border-border items-center justify-start">
           <span className="text-muted-foreground">
             Net power
           </span>
         </div>
         <div className={cn(
-          "flex border-b items-center justify-end",
+          "flex border-b border-border items-center justify-end",
           series.averageNetCurrentPower < 0 ? "text-red-800" : "text-green-800"
         )}>
           <span className="font-medium">
@@ -277,7 +277,7 @@ export function PowerChartCard({
           </span>
         </div>
         <div className={cn(
-          "flex border-b items-center justify-end",
+          "flex border-b border-border items-center justify-end",
           series.averageNetMaximumPower < 0 ? "text-red-800" : "text-green-800"
         )}>
           <span>

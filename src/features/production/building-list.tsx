@@ -64,8 +64,8 @@ export function BuildingList({
   const store = useGameStore();
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex gap-1">
+    <div className="flex flex-col gap-4 my-2">
+      <div className="flex gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button />}>
             <Build /> Build
@@ -126,7 +126,7 @@ export function BuildingList({
           {emptySearchMessage}
         </p>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-4">
           {filteredBuildings.map((buildingGroup) => (
             <BuildingCard
               key={`${buildingGroup.name}-${buildingGroup.process.name}`}

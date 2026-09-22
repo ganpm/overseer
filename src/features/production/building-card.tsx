@@ -87,7 +87,7 @@ export function BuildingCard({
   const speedColor = getSpeedColor(speed);
 
   return (
-    <div className="flex flex-col gap-2 border rounded-md p-3 w-full bg-card" {...props}>
+    <div className="flex flex-col gap-2 border border-border rounded-md p-3 w-full bg-card" {...props}>
       <div className="flex justify-between">
         <div className="flex items-center gap-1">
           <StatusIcon size="14" fill={statusColor} stroke={statusColor} />
