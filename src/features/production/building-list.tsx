@@ -132,8 +132,7 @@ export function BuildingList({
             <BuildingCard
               key={`${buildingGroup.name}-${buildingGroup.process.name}`}
               buildingGroup={buildingGroup}
-              increaseCount={() => store.mutate(game => game.addBuilding(buildingGroup.name, buildingGroup.process.name, 1))}
-              decreaseCount={() => store.mutate(game => game.addBuilding(buildingGroup.name, buildingGroup.process.name, -1))}
+              changeCount={(count: number) => store.mutate(game => game.addBuilding(buildingGroup.name, buildingGroup.process.name, count))}
               setEnabled={() => store.mutate(game => game.setBuildingEnabled(buildingGroup.name, buildingGroup.process.name, !buildingGroup.enabled))}
             />
           ))}

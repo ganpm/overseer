@@ -81,6 +81,15 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+
+    --healthy: color-mix(in oklab, var(--color-green-600) 10%, transparent);
+    --healthy-foreground: var(--color-green-600);
+    --error: color-mix(in oklab, var(--color-red-600) 10%, transparent);
+    --error-foreground: var(--color-red-600);
+    --warning: color-mix(in oklab, var(--color-yellow-600) 10%, transparent);
+    --warning-foreground: var(--color-yellow-600);
+    --offline: color-mix(in oklab, var(--color-gray-600) 10%, transparent);
+    --offline-foreground: var(--color-gray-600);
 }
 
 .dark {
@@ -115,6 +124,15 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+
+    --healthy: color-mix(in oklab, var(--color-green-400) 20%, transparent);
+    --healthy-foreground: var(--color-green-400);
+    --error: color-mix(in oklab, var(--color-red-400) 20%, transparent);
+    --error-foreground: var(--color-red-400);
+    --warning: color-mix(in oklab, var(--color-yellow-400) 20%, transparent);
+    --warning-foreground: var(--color-yellow-400);
+    --offline: color-mix(in oklab, var(--color-gray-400) 20%, transparent);
+    --offline-foreground: var(--color-gray-400);
 }
 
 @layer base {
@@ -158,4 +176,24 @@
   }
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+
+.healthy {
+  color: var(--healthy-foreground);
+  background-color: var(--healthy);
+}
+
+.error {
+  color: var(--error-foreground);
+  background-color: var(--error);
+}
+
+.warning {
+  color: var(--warning-foreground);
+  background-color: var(--warning);
+}
+
+.offline {
+  color: var(--offline-foreground);
+  background-color: var(--offline);
 }

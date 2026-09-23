@@ -1,4 +1,5 @@
 import type { PowerChartData } from "pkg/overseer";
+import { ColoredBadge } from "@/components/colored-badge";
 import {
   CartesianGrid,
   Line,
@@ -59,34 +60,13 @@ const signedFormatter = new Intl.NumberFormat("en-US", {
   signDisplay: "exceptZero",
 });
 
-interface GridStatusProps {
-  production: number;
-  consumption: number;
-}
 
-function GridStatus({ production, consumption }: GridStatusProps) {
-  return (
-    <span className={cn(
-      "px-2 py-0.5 rounded-md text-xs",
-      consumption === 0 ?
-        "text-muted-foreground bg-muted" :
-      production === 0 ?
-        "text-red-800 bg-red-100" :
-      production < consumption ?
-        "text-yellow-800 bg-yellow-100" :
-        "text-green-800 bg-green-100"
-    )}
-    >
-      {consumption === 0 ?
-        "No Demand" :
-      production === 0 ?
-        "Blackout" :
-      production < consumption ?
-        "Brownout" :
-        "Stable"}
-    </span>
-  );
-}
+const getGridStatus = (production: number, consumption: number): { label: string; variant: "offline" | "error" | "warning" | "healthy" } => {
+  if (consumption === 0) return { label: "No Demand", variant: "offline" };
+  if (production === 0) return { label: "Blackout", variant: "error" };
+  if (production < consumption) return { label: "Brownout", variant: "warning" };
+  return { label: "Stable", variant: "healthy" };
+};
 
 export interface PowerChartCardProps extends React.HTMLAttributes<HTMLDivElement> {
   series: PowerChartData;
@@ -116,6 +96,8 @@ export function PowerChartCard({
   const maximumProduction = unsignedFormatter.format(series.averageMaximumGeneration);
   const netMaximumPower = signedFormatter.format(series.averageNetMaximumPower);
 
+  const gridStatus = getGridStatus(Math.abs(series.averageCurrentGeneration), Math.abs(series.averageCurrentConsumption));
+
   return (
     <div className="flex flex-col gap-2 bg-card shadow-md border border-border rounded-md p-3" {...props}>
       <div className="flex items-center justify-between">
@@ -125,12 +107,9 @@ export function PowerChartCard({
             Main Power Grid
           </span>
         </div>
-        <div className="flex items-center">
-          <GridStatus
-            production={Math.abs(series.averageCurrentGeneration)}
-            consumption={Math.abs(series.averageCurrentConsumption)}
-          />
-        </div>
+        <ColoredBadge variant={gridStatus.variant}>
+          {gridStatus.label}
+        </ColoredBadge>
       </div>
       <ChartContainer config={config} className="h-30 w-full bg-muted">
         <LineChart
@@ -270,7 +249,7 @@ export function PowerChartCard({
         </div>
         <div className={cn(
           "flex border-b border-border items-center justify-end",
-          series.averageNetCurrentPower < 0 ? "text-red-800" : "text-green-800"
+          series.averageNetCurrentPower < 0 ? "text-(--error-foreground)" : "text-(--healthy-foreground)"
         )}>
           <span className="font-medium">
             {netCurrentPower} MW
@@ -278,7 +257,7 @@ export function PowerChartCard({
         </div>
         <div className={cn(
           "flex border-b border-border items-center justify-end",
-          series.averageNetMaximumPower < 0 ? "text-red-800" : "text-green-800"
+          series.averageNetMaximumPower < 0 ? "text-(--error-foreground)" : "text-(--healthy-foreground)"
         )}>
           <span>
             {netMaximumPower} MW
