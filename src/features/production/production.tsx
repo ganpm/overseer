@@ -115,7 +115,6 @@ export const ProductionOverview = () => {
             availableBuildings={availableGenerators}
             builtBuildings={constructedGenerators}
             filteredBuildings={generators}
-            sectionLabel="Power Generators"
             searchQuery={searchQueryGenerator}
             onSearchQueryChange={setSearchQueryGenerator}
             sortState={sortStateGenerator}
@@ -133,7 +132,6 @@ export const ProductionOverview = () => {
             availableBuildings={availableProducers}
             builtBuildings={constructedProducers}
             filteredBuildings={producers}
-            sectionLabel="Production Buildings"
             searchQuery={searchQueryProducer}
             onSearchQueryChange={setSearchQueryProducer}
             sortState={sortStateProducer}

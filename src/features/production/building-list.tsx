@@ -28,6 +28,7 @@ import {
   Hammer as Build,
 } from "lucide-react";
 import { BuildingCard } from "@/features/production/building-card";
+import { ProcessCard } from "@/features/production/process-card";
 
 interface AvailableBuilding {
   name: string;
@@ -38,7 +39,6 @@ export interface BuildingListProps {
   availableBuildings: AvailableBuilding[];
   builtBuildings: BuildingGroupInstance[];
   filteredBuildings: BuildingGroupInstance[];
-  sectionLabel: string;
   searchQuery: string;
   onSearchQueryChange: (value: string) => void;
   sortState: SortState<BuildingGroupInstance>;
@@ -52,7 +52,6 @@ export function BuildingList({
   availableBuildings,
   builtBuildings,
   filteredBuildings,
-  sectionLabel,
   searchQuery,
   onSearchQueryChange,
   sortState,
@@ -72,23 +71,25 @@ export function BuildingList({
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuGroup>
-              <DropdownMenuLabel>{sectionLabel}</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                Select Building
+              </DropdownMenuLabel>
               {availableBuildings.map((building) => (
                 <DropdownMenuSub key={building.name}>
                   <DropdownMenuSubTrigger>
                     {building.name}
                   </DropdownMenuSubTrigger>
                   <DropdownMenuPortal>
-                    <DropdownMenuSubContent>
+                    <DropdownMenuSubContent className="w-90">
                       <DropdownMenuLabel>
-                        {building.name} Processes
+                        Select Process
                       </DropdownMenuLabel>
                       {building.processOptions.map((processName) => (
                         <DropdownMenuItem
                           key={processName}
                           onClick={() => store.mutate(game => game.addBuilding(building.name, processName, 1))}
                         >
-                          {processName}
+                          <ProcessCard process={store.getGame().data.processes[processName]} />
                         </DropdownMenuItem>
                       ))}
                     </DropdownMenuSubContent>

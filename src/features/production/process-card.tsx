@@ -1,4 +1,4 @@
-import type { ProcessInstance } from "pkg/overseer";
+import type { Process, ProcessInstance, ResourceAmount } from "pkg/overseer";
 import { Separator } from "@/components/ui/separator";
 import {
   ArrowBigRight as ProcessIcon,
@@ -9,26 +9,35 @@ import {
   SquareArrowRightExit as OutputIcon,
 } from "lucide-react"
 
+// Fields shared by both Process and ProcessInstance, which is all this component needs.
+type ProcessLike = Pick<
+  Process | ProcessInstance,
+  "duration" | "powerConsumption" | "powerGeneration"
+> & {
+  inputs: ResourceAmount[];
+  outputs: ResourceAmount[];
+};
+
 export interface ProcessCardProps {
-  process: ProcessInstance
+  process: ProcessLike
 }
 
 export function ProcessCard({
   process
 }: ProcessCardProps) {
   return (
-    <div className="flex w-full text-muted-foreground border border-border rounded-md">
+    <div className="flex w-full text-muted-foreground text-xs border border-border rounded-md">
       <div className="flex-1 flex flex-col justify-start items-start p-2 overflow-x-auto">
         {process.inputs.length > 0 && (
           process.inputs.map((input) => (
             (input.amount > 0) ? (
               <div key={input.resource} className="flex items-center gap-1 whitespace-nowrap">
-                <InputIcon size={13} />
+                <InputIcon className="size-3.25" />
                 {input.amount} {input.resource}
               </div>
             ) : (
               <div key={input.resource} className="flex items-center gap-1 whitespace-nowrap">
-                <InfinityIcon size={13} />
+                <InfinityIcon className="size-3.25" />
                 {input.resource}
               </div>
             )
@@ -36,7 +45,7 @@ export function ProcessCard({
         )}
         {process.powerConsumption > 0 && (
           <div className="flex items-center gap-1">
-            <PowerIcon size={13} />
+            <PowerIcon className="size-3.25" />
             {process.powerConsumption} MW
           </div>
         )}
@@ -45,12 +54,12 @@ export function ProcessCard({
       <div className="flex flex-col justify-start items-center p-2 w-fit">
         <div className="flex items-center select-none">
           &nbsp;
-          <ProcessIcon size={13} />
+          <ProcessIcon className="size-3.25" />
           &nbsp;
         </div>
         {process.duration > 0 && (
           <div className="flex items-center gap-1">
-            <DurationIcon size={13} />
+            <DurationIcon className="size-3.25" />
             {process.duration.toFixed(1)}s
           </div>
         )}
@@ -61,12 +70,12 @@ export function ProcessCard({
           process.outputs.map((output) => (
             (output.amount > 0) ? (
               <div key={output.resource} className="flex items-center gap-1 whitespace-nowrap">
-                <OutputIcon size={13} />
+                <OutputIcon className="size-3.25" />
                 {output.amount} {output.resource}
               </div>
             ) : (
               <div key={output.resource} className="flex items-center gap-1 whitespace-nowrap">
-                <InfinityIcon size={13} />
+                <InfinityIcon className="size-3.25" />
                 {output.resource}
               </div>
             )
@@ -74,7 +83,7 @@ export function ProcessCard({
         )}
         {process.powerGeneration > 0 && (
           <div className="flex items-center gap-1">
-            <PowerIcon size={13} />
+            <PowerIcon className="size-3.25" />
             {process.powerGeneration} MW
           </div>
         )}
