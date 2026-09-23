@@ -26,7 +26,7 @@ export function ProcessCard({
   process
 }: ProcessCardProps) {
   return (
-    <div className="flex w-full text-muted-foreground text-xs border border-border rounded-md">
+    <div className="flex w-full bg-muted shadow-sm text-muted-foreground text-xs border border-border rounded-md">
       <div className="flex-1 flex flex-col justify-start items-start p-2 overflow-x-auto">
         {process.inputs.length > 0 && (
           process.inputs.map((input) => (

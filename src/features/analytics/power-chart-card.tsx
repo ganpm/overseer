@@ -117,7 +117,7 @@ export function PowerChartCard({
   const netMaximumPower = signedFormatter.format(series.averageNetMaximumPower);
 
   return (
-    <div className="flex flex-col gap-2 bg-card border border-border rounded-md p-3" {...props}>
+    <div className="flex flex-col gap-2 bg-card shadow-md border border-border rounded-md p-3" {...props}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1">
           <PowerIcon size={14} />

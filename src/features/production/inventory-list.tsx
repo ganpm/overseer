@@ -60,7 +60,7 @@ export function InventoryList({
           Nothing in inventory matches the search query.
         </p>
       ) : (
-        <div className="grid grid-cols-[1fr_auto] gap-3 bg-card rounded-md border border-border p-3">
+        <div className="grid grid-cols-[1fr_auto] gap-3 bg-card shadow-md rounded-md border border-border p-3">
           <div className="flex border-b border-border items-center justify-start">
             <span className="text-muted-foreground text-xs">
               Resource
