@@ -9,21 +9,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  ArrowDownWideNarrow as DescendingIcon,
-  ArrowUpNarrowWide as AscendingIcon,
-  ListFilter as SortIcon,
+  ChevronDown as DescendingIcon,
+  ChevronUp as AscendingIcon,
+  ListSortDescending as SortIcon,
 } from "lucide-react";
 
 export type SortDirection = "ascending" | "descending";
 
+type Field<T> = keyof T & string;
+
 export interface SortState<T> {
-  field: keyof T & string;
+  field: Field<T>;
   direction: SortDirection;
 }
 
 export type SortConfig<T> = Partial<
   Record<
-    keyof T & string,
+    Field<T>,
     { label: string; sortFn: (a: T, b: T) => number }
   >
 >;
@@ -69,7 +71,7 @@ export function SortController<T>({
   };
 
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-2">
       <Button
         variant="outline"
         onClick={() => {
@@ -90,12 +92,12 @@ export function SortController<T>({
             <DropdownMenuLabel>Sort by</DropdownMenuLabel>
             <DropdownMenuRadioGroup value={sortState.field} onValueChange={(e) => {
               onChange({
-                field: e as keyof T & string,
+                field: e as Field<T>,
                 direction: sortState.direction,
               })
             }}>
               {entries(config).map(([value, option]) => (
-                <DropdownMenuRadioItem key={value} value={value} closeOnClick>
+                <DropdownMenuRadioItem key={value} value={value}>
                   {option?.label}
                 </DropdownMenuRadioItem>
               ))}
