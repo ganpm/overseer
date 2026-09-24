@@ -33,17 +33,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const status = {
-  on: "var(--color-green-500)", // #22C55E
-  stopped: "var(--color-red-500)", // #EF4444
-  warning: "var(--color-yellow-500)", // #F59E0B
-  off: "var(--color-gray-400)", // #9CA3AF
+  healthy: "var(--healthy-foreground)",
+  error: "var(--error-foreground)",
+  warning: "var(--warning-foreground)",
+  offline: "var(--offline-foreground)",
 };
 
 const getStatusColor = (active: boolean, efficient: boolean, enabled: boolean) => {
-  if (!enabled) return status.off;
-  if (!active) return status.stopped;
+  if (!enabled) return status.offline;
+  if (!active) return status.error;
   if (!efficient) return status.warning;
-  return status.on;
+  return status.healthy;
 };
 
 const powerFmt = (number: number) => number.toLocaleString(undefined, {
@@ -125,11 +125,12 @@ export function BuildingCard({
   //const noInput = isPowered && isEnabled && !isActive;
   const noInput = !canStart(inputBuffer, process.inputs) && !isActive && isEnabled;
 
-  const netActivePower = (process.powerGeneration - process.powerConsumption) * activeCount;
-  const netTotalPower = (process.powerGeneration - process.powerConsumption) * totalCount;
+  const netActivePower = process.powerAllocated * activeCount;
+  const netPower = consumesPower ? process.powerConsumption : process.powerGeneration;
+  const netTotalPower = netPower * totalCount;
 
-  const noPower = consumesPower ? process.powerAllocated === 0.0 && isEnabled : false;
-  const lowPower = consumesPower ? process.powerAllocated > 0.0 && process.powerAllocated < process.powerConsumption && isEnabled : false;
+  const noPower = consumesPower && isEnabled && process.powerAllocated === 0.0;
+  const lowPower = consumesPower && isEnabled && process.powerAllocated > 0.0 && process.powerAllocated < process.powerConsumption;
 
   const speed = isEnabled ? efficiency * 100 : 0;
   const speedClass = getSpeedClass(isActive, isEfficient, isEnabled);
@@ -157,7 +158,7 @@ export function BuildingCard({
         {netTotalPower !== 0.0 && (
           <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary">
             <span className="flex gap-0">
-              {netActivePower > 0 ? <UpIcon size={10} /> : netActivePower < 0 ? <DownIcon size={10} /> : <MinusIcon size={10} className="text-secondary" />}
+              {consumesPower ? <UpIcon size={10} /> : <DownIcon size={10} />}
             </span>
             <span className="font-medium">
               {powerFmt(netActivePower)} MW
@@ -176,7 +177,7 @@ export function BuildingCard({
       <div className="flex min-h-5 gap-2 items-center">
         {!enabled && (
           <div className="flex items-center gap-1">
-            <DisabledIcon size={13} stroke={status.off} />
+            <DisabledIcon size={13} stroke={status.offline} />
             <span className="text-muted-foreground">Offline</span>
           </div>
         )}
@@ -188,13 +189,13 @@ export function BuildingCard({
         )}
         {noPower && (
           <div className="flex items-center gap-1">
-            <UnpoweredIcon size={13} stroke={status.stopped} />
+            <UnpoweredIcon size={13} stroke={status.error} />
             <span className="text-muted-foreground">No power</span>
           </div>
         )}
         {noInput && (
           <div className="flex items-center gap-1">
-            <AlertIcon size={13} stroke={status.stopped} />
+            <AlertIcon size={13} stroke={status.error} />
             <span className="text-muted-foreground">Not enough resources</span>
           </div>
         )}
@@ -206,7 +207,7 @@ export function BuildingCard({
             checked={isEnabled}
             onCheckedChange={setEnabled}
             id={`switch-${name}-${process.name}`}
-            className="cursor-pointer data-checked:bg-green-500"
+            className="cursor-pointer data-checked:bg-(--healthy-foreground)"
           />
           <label
             htmlFor={`switch-${name}-${process.name}`}
