@@ -158,7 +158,7 @@ export function BuildingCard({
         {netTotalPower !== 0.0 && (
           <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary">
             <span className="flex gap-0">
-              {consumesPower ? <UpIcon size={10} /> : <DownIcon size={10} />}
+              {consumesPower ? <DownIcon size={10} /> : <UpIcon size={10} />}
             </span>
             <span className="font-medium">
               {powerFmt(netActivePower)} MW
