@@ -53,6 +53,8 @@ pub struct ProcessInstance {
     name: String,
     power_consumption: f64,
     power_generation: f64,
+    /// If the process consumes power, this represents the amount of power currently allocated to it.
+    /// If the process produces power, this represents the amount of power currently being generated.
     power_allocated: f64,
     inputs: Vec<ResourceAmount>,
     outputs: Vec<ResourceAmount>,
@@ -783,9 +785,22 @@ impl Game {
 
         self.buildings
             .values_mut()
-            .filter(|group| group.enabled)
             .for_each(|group| {
-                group.process.power_allocated = group.process.power_consumption * consumer_power_ratio;
+                // Disabled groups are excluded from the ratio calculation above, so their allocation must be
+                // explicitly zeroed here; otherwise they'd keep whatever value they had before being disabled.
+                group.process.power_allocated = if group.process.power_consumption > 0.0 {
+                    if group.enabled {
+                        group.process.power_consumption * consumer_power_ratio
+                    } else {
+                        0.0
+                    }
+                } else {
+                    if group.enabled {
+                        group.process.power_generation
+                    } else {
+                        0.0
+                    }
+                };
             });
     }
 
@@ -795,7 +810,6 @@ impl Game {
 
         self.buildings
             .values_mut()
-            .filter(|group| group.enabled)
             .for_each(|group| {
                 // Note: |= on purpose, not || because || short-circuits and we want to tick all groups even if one returns true.
                 changed |= Self::tick_group(group, &mut self.inventory, &mut self.throughput_data, delta_ms);
@@ -815,9 +829,9 @@ impl Game {
         let is_powered = group.process.power_allocated > 0.0;
         let mut changed = false;
 
-        // If the building group requires power but is not powered, set all buildings to idle and return.
-        // Reset the progress of the process.
-        if consumes_power && !is_powered {
+        // If the building group is disabled, or requires power but is not powered, set all buildings to idle
+        // and return. Reset the progress of the process.
+        if !group.enabled || (consumes_power && !is_powered) {
             if group.active_count > 0 {
                 group.active_count = 0;
                 group.process.elapsed = 0.0;
