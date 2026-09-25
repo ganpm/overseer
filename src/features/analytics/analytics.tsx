@@ -28,7 +28,7 @@ export function AnalyticsOverview() {
 
   const nonzeroThroughputChartData = throughputChartData.filter((series) =>
     !isEffectivelyZero(series.currentAmount)
-    || !isEffectivelyZero(series.averageRate)
+    || !isEffectivelyZero(series.averageNetRate)
     || series.points.some((point) => !isEffectivelyZero(point.produced) || !isEffectivelyZero(point.consumed))
   );
 
@@ -46,9 +46,9 @@ export function AnalyticsOverview() {
       label: "Amount",
       sortFn: (a, b) => a.currentAmount - b.currentAmount,
     },
-    "averageRate": {
+    "averageNetRate": {
       label: "Average Rate",
-      sortFn: (a, b) => a.averageRate - b.averageRate,
+      sortFn: (a, b) => a.averageNetRate - b.averageNetRate,
     },
   };
   const queriedThroughputCharts = filterAndSort(nonzeroThroughputChartData, {
