@@ -15,10 +15,6 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { Separator } from "@/components/ui/separator";
-import {
-  ArrowUp as ProductionRateIcon,
-  ArrowDown as ConsumptionRateIcon,
-} from "lucide-react";
 import { SAMPLE_INTERVAL_MS } from "@/context/game";
 
 export interface ThroughputChartCardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -32,14 +28,14 @@ const amountFormatter = new Intl.NumberFormat("en-US", {
 });
 
 const unsignedRateFormatter = new Intl.NumberFormat("en-US", {
-  maximumFractionDigits: 2,
-  minimumFractionDigits: 0,
+  maximumFractionDigits: 1,
+  minimumFractionDigits: 1,
   signDisplay: "never",
 });
 
 const signedRateFormatter = new Intl.NumberFormat("en-US", {
-  maximumFractionDigits: 2,
-  minimumFractionDigits: 0,
+  maximumFractionDigits: 1,
+  minimumFractionDigits: 1,
   signDisplay: "exceptZero",
 });
 
@@ -47,11 +43,11 @@ const signedRateFormatter = new Intl.NumberFormat("en-US", {
 const config = {
   produced: {
     label: "Produced",
-    color: "oklch(0.70 0.16 153)",
+    color: "var(--healthy-foreground)", //oklch(0.70 0.16 153)
   },
   consumed: {
     label: "Consumed",
-    color: "oklch(0.62 0.19 25)",
+    color: "var(--error-foreground)", //oklch(0.62 0.19 25)
   },
 } satisfies ChartConfig;
 
@@ -59,16 +55,22 @@ export function ThroughputChartCard({
   series,
   ...props
 }: ThroughputChartCardProps) {
-  const resourceName = series.resourceName;
 
-  const amount = amountFormatter.format(series.currentAmount);
-  const productionRate = unsignedRateFormatter.format(series.averageProduction);
-  const consumptionRate = unsignedRateFormatter.format(series.averageConsumption);
-  const netRate = signedRateFormatter.format(series.averageRate);
+  const {
+    resourceName,
+    currentAmount,
+    currentProductionRate,
+    currentConsumptionRate,
+    currentNetRate,
+    averageProductionRate,
+    averageConsumptionRate,
+    averageNetRate,
+    points
+  } = series;
 
   // Set domainMin to the 2nd point to hide the disappearing 1st point whenever the chart is updated.
-  const domainMin = series.points[1]?.timestamp ?? 0;
-  const domainMax = series.points[series.points.length - 1]?.timestamp ?? 0;
+  const domainMin = points[1]?.timestamp ?? 0;
+  const domainMax = points[points.length - 1]?.timestamp ?? 0;
 
   
   const tickFormatter = (timestamp: number) => {
@@ -90,7 +92,7 @@ export function ThroughputChartCard({
         </div>
         <div className="flex items-baseline gap-1">
           <span className="font-medium text-lg">
-            {amount}
+            {amountFormatter.format(currentAmount)}
           </span>
           <span className="text-muted-foreground size-sm">
             in storage
@@ -99,7 +101,7 @@ export function ThroughputChartCard({
       </div>
       <ChartContainer config={config} className="h-30 w-full bg-muted">
         <AreaChart
-          data={series.points}
+          data={points}
           responsive={true}
           margin={{ top: 10, right: 20, left: 10, bottom: 0 }}
         >
@@ -123,7 +125,7 @@ export function ThroughputChartCard({
             allowDataOverflow={true}
           />
           <ChartTooltip
-            content={<ChartTooltipContent className="w-40" />}
+            content={<ChartTooltipContent className="w-40" hideLabel />}
           />
           <Area
             dataKey="consumed"
@@ -150,50 +152,77 @@ export function ThroughputChartCard({
         </AreaChart>
       </ChartContainer>
       <Separator />
-      <div className="flex gap-3">
-        <div className="flex-1 flex flex-col">
-          <div className="flex items-center gap-1">
-            <ProductionRateIcon size={13} className="text-green-800" />
-            <span className="text-muted-foreground text-xs">
-              Produced
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="font-medium pl-1">
-              {productionRate}/s
-            </span>
-          </div>
+      <div className="grid grid-cols-[max-content_repeat(2,1fr)] gap-x-3 gap-y-1">
+
+        <div className="flex border-b border-border">
+          <span>
+            &nbsp;
+          </span>
         </div>
-        <Separator orientation="vertical" />
-        <div className="flex-1 flex flex-col">
-          <div className="flex items-center gap-1">
-            <ConsumptionRateIcon size={13} className="text-red-800" />
-            <span className="text-muted-foreground text-xs">
-              Consumed
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="font-medium pl-1">
-              {consumptionRate}/s
-            </span>
-          </div>
+        <div className="flex border-b border-border items-center justify-center">
+          <span className="text-muted-foreground text-xs">
+            Current
+          </span>
         </div>
-        <Separator orientation="vertical" />
-        <div className="flex-1 flex flex-col">
-          <div className="flex items-center gap-1">
-            <span className="text-muted-foreground text-xs">
-              Net
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className={cn(
-              "font-medium pl-1",
-              series.averageRate > 0 ? "text-green-800" : series.averageRate < 0 ? "text-red-800" : "text-foreground"
-            )}>
-              {netRate}/s
-            </span>
-          </div>
+        <div className="flex border-b border-border items-center justify-center">
+          <span className="text-muted-foreground text-xs">
+            Average
+          </span>
         </div>
+
+        <div className="flex border-b border-border items-center justify-start">
+          <span className="text-muted-foreground text-xs">
+            Production
+          </span>
+        </div>
+        <div className="flex border-b border-border items-center justify-end">
+          <span className="font-medium">
+            {unsignedRateFormatter.format(currentProductionRate)} /s
+          </span>
+        </div>
+        <div className="flex border-b border-border items-center justify-end">
+          <span className="font-medium">
+            {unsignedRateFormatter.format(averageProductionRate)} /s
+          </span>
+        </div>
+
+        <div className="flex border-b border-border items-center justify-start">
+          <span className="text-muted-foreground text-xs">
+            Consumption
+          </span>
+        </div>
+        <div className="flex border-b border-border items-center justify-end">
+          <span className="font-medium">
+            {unsignedRateFormatter.format(currentConsumptionRate)} /s
+          </span>
+        </div>
+        <div className="flex border-b border-border items-center justify-end">
+          <span className="font-medium">
+            {unsignedRateFormatter.format(averageConsumptionRate)} /s
+          </span>
+        </div>
+
+        <div className="flex border-b border-border items-center justify-start">
+          <span className="text-muted-foreground text-xs">
+            Net
+          </span>
+        </div>
+        <div className="flex border-b border-border items-center justify-end">
+          <span className={cn(
+            "font-medium",
+            currentNetRate > 0 ? "text-(--healthy-foreground)" : currentNetRate < 0 ? "text-(--error-foreground)" : "text-foreground"
+          )}>
+            {signedRateFormatter.format(currentNetRate)} /s
+          </span>
+        </div>
+        <div className="flex border-b border-border items-center justify-end">
+          <span className={cn(
+            averageNetRate > 0 ? "text-(--healthy-foreground)" : averageNetRate < 0 ? "text-(--error-foreground)" : "text-foreground"
+          )}>
+            {signedRateFormatter.format(averageNetRate)} /s
+          </span>
+        </div>
+
       </div>
     </div>
   );
