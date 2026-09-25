@@ -14,6 +14,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { Separator } from "@/components/ui/separator";
 import {
   Zap as PowerIcon
 } from "lucide-react";
@@ -21,29 +22,21 @@ import { cn } from "@/lib/utils";
 import { SAMPLE_INTERVAL_MS } from "@/context/game";
 
 const config = {
-  maximumConsumption: {
-    label: "Maximum Consumption",
-    color: "oklch(0.72 0.14 25)",
+  maximumPowerConsumption: {
+    label: "Maximum Power Consumption",
+    color: "var(--error-foreground)",
   },
-  maximumGeneration: {
-    label: "Maximum Generation",
-    color: "oklch(0.80 0.12 153)",
+  maximumPowerProduction: {
+    label: "Maximum Power Production",
+    color: "var(--healthy-foreground)",
   },
-  netMaximumPower: {
-    label: "Maximum Net Power",
-    color: "oklch(0.72 0.14 285)",
+  currentPowerConsumption: {
+    label: "Current PowerConsumption",
+    color: "var(--error-foreground)",
   },
-  currentConsumption: {
-    label: "Consumption",
-    color: "oklch(0.62 0.19 25)",
-  },
-  currentGeneration: {
-    label: "Generation",
-    color: "oklch(0.70 0.16 153)",
-  },
-  netCurrentPower: {
-    label: "Net Power",
-    color: "oklch(0.62 0.19 285)",
+  currentPowerProduction: {
+    label: "Current Power Production",
+    color: "var(--healthy-foreground)",
   },
 } satisfies ChartConfig;
 
@@ -76,9 +69,22 @@ export function PowerChartCard({
   series,
   ...props
 }: PowerChartCardProps) {
+  const {
+    maximumPowerConsumption,
+    maximumPowerProduction,
+    maximumNetPower,
+    currentPowerConsumption,
+    currentPowerProduction,
+    currentNetPower,
+    averagePowerConsumption,
+    averagePowerProduction,
+    averageNetPower,
+    points,
+  } = series;
+
   // Set domainMin to the 2nd point to hide the disappearing 1st point whenever the chart is updated.
-  const domainMin = series.points[1]?.timestamp ?? 0;
-  const domainMax = series.points[series.points.length - 1]?.timestamp ?? 0;
+  const domainMin = points[1]?.timestamp ?? 0;
+  const domainMax = points[points.length - 1]?.timestamp ?? 0;
 
   const tickFormatter = (timestamp: number) => {
     const seconds = ((timestamp - domainMax) / 1000).toLocaleString(undefined, {
@@ -89,14 +95,7 @@ export function PowerChartCard({
     return tick;
   }
 
-  const currentProduction = unsignedFormatter.format(series.averageCurrentGeneration);
-  const currentConsumption = unsignedFormatter.format(series.averageCurrentConsumption);
-  const netCurrentPower = signedFormatter.format(series.averageNetCurrentPower);
-  const maximumConsumption = unsignedFormatter.format(series.averageMaximumConsumption);
-  const maximumProduction = unsignedFormatter.format(series.averageMaximumGeneration);
-  const netMaximumPower = signedFormatter.format(series.averageNetMaximumPower);
-
-  const gridStatus = getGridStatus(Math.abs(series.averageCurrentGeneration), Math.abs(series.averageCurrentConsumption));
+  const gridStatus = getGridStatus(Math.abs(averagePowerProduction), Math.abs(averagePowerConsumption));
 
   return (
     <div className="flex flex-col gap-2 bg-card shadow-md border border-border rounded-md p-3" {...props}>
@@ -113,7 +112,7 @@ export function PowerChartCard({
       </div>
       <ChartContainer config={config} className="h-30 w-full bg-muted">
         <LineChart
-          data={series.points}
+          data={points}
           responsive={true}
           margin={{ top: 10, right: 20, left: 10, bottom: 0 }}
         >
@@ -138,11 +137,11 @@ export function PowerChartCard({
             allowDataOverflow={true}
           />
           <Line
-            name="Maximum Consumption"
+            name="Maximum Power Consumption"
             unit=" MW"
-            dataKey="maximumConsumption"
+            dataKey="maximumPowerConsumption"
             type="stepAfter"
-            stroke={config.maximumConsumption.color}
+            stroke="var(--color-maximumPowerConsumption)"
             strokeWidth={2}
             strokeDasharray="5 5"
             dot={false}
@@ -151,11 +150,11 @@ export function PowerChartCard({
             animationEasing="linear"
           />
           <Line
-            name="Maximum Generation"
+            name="Maximum Power Production"
             unit=" MW"
-            dataKey="maximumGeneration"
+            dataKey="maximumPowerProduction"
             type="stepAfter"
-            stroke={config.maximumGeneration.color}
+            stroke="var(--color-maximumPowerProduction)"
             strokeWidth={2}
             strokeDasharray="5 5"
             dot={false}
@@ -164,11 +163,11 @@ export function PowerChartCard({
             animationEasing="linear"
           />
           <Line
-            name="Current Consumption"
+            name="Current Power Consumption"
             unit=" MW"
-            dataKey="currentConsumption"
+            dataKey="currentPowerConsumption"
             type="stepAfter"
-            stroke={config.currentConsumption.color}
+            stroke="var(--color-currentPowerConsumption)"
             strokeWidth={2}
             dot={false}
             animationDuration={SAMPLE_INTERVAL_MS}
@@ -176,11 +175,11 @@ export function PowerChartCard({
             animationEasing="linear"
           />
           <Line
-            name="Current Generation"
+            name="Current Power Production"
             unit=" MW"
-            dataKey="currentGeneration"
+            dataKey="currentPowerProduction"
             type="stepAfter"
-            stroke={config.currentGeneration.color}
+            stroke="var(--color-currentPowerProduction)"
             strokeWidth={2}
             dot={false}
             animationDuration={SAMPLE_INTERVAL_MS}
@@ -188,11 +187,12 @@ export function PowerChartCard({
             animationEasing="linear"
           />
           <ChartTooltip
-            content={<ChartTooltipContent className="w-40" />}
+            content={<ChartTooltipContent className="w-40" hideLabel />}
           />
         </LineChart>
       </ChartContainer>
-      <div className="grid grid-cols-[1fr_auto_auto] gap-3">
+      <Separator />
+      <div className="grid grid-cols-[max-content_repeat(3,1fr)] gap-x-3 gap-y-2">
 
         <div className="flex border-b border-border">
           <span>
@@ -206,61 +206,84 @@ export function PowerChartCard({
         </div>
         <div className="flex border-b border-border items-center justify-center">
           <span className="text-muted-foreground text-xs">
-            Theoretical max
+            Average
+          </span>
+        </div>
+        <div className="flex border-b border-border items-center justify-center">
+          <span className="text-muted-foreground text-xs">
+            Maximum
           </span>
         </div>
 
         <div className="flex border-b border-border items-center justify-start">
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground text-xs">
             Production
           </span>
         </div>
         <div className="flex border-b border-border items-center justify-end">
           <span className="font-medium">
-            {currentProduction} MW
+            {unsignedFormatter.format(currentPowerProduction)} MW
           </span>
         </div>
         <div className="flex border-b border-border items-center justify-end">
           <span>
-            {maximumProduction} MW
+            {unsignedFormatter.format(averagePowerProduction)} MW
+          </span>
+        </div>
+        <div className="flex border-b border-border items-center justify-end">
+          <span>
+            {unsignedFormatter.format(maximumPowerProduction)} MW
           </span>
         </div>
 
         <div className="flex border-b border-border items-center justify-start">
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground text-xs">
             Consumption
           </span>
         </div>
         <div className="flex border-b border-border items-center justify-end">
           <span className="font-medium">
-            {currentConsumption} MW
+            {unsignedFormatter.format(currentPowerConsumption)} MW
           </span>
         </div>
         <div className="flex border-b border-border items-center justify-end">
           <span>
-            {maximumConsumption} MW
+            {unsignedFormatter.format(averagePowerConsumption)} MW
+          </span>
+        </div>
+        <div className="flex border-b border-border items-center justify-end">
+          <span>
+            {unsignedFormatter.format(maximumPowerConsumption)} MW
           </span>
         </div>
 
         <div className="flex border-b border-border items-center justify-start">
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground text-xs">
             Net power
           </span>
         </div>
         <div className={cn(
           "flex border-b border-border items-center justify-end",
-          series.averageNetCurrentPower < 0 ? "text-(--error-foreground)" : "text-(--healthy-foreground)"
+           currentNetPower < 0 ? "text-(--error-foreground)" : currentNetPower > 0 ? "text-(--healthy-foreground)" : "text-foreground"
         )}>
           <span className="font-medium">
-            {netCurrentPower} MW
+            {signedFormatter.format(currentNetPower)} MW
           </span>
         </div>
         <div className={cn(
           "flex border-b border-border items-center justify-end",
-          series.averageNetMaximumPower < 0 ? "text-(--error-foreground)" : "text-(--healthy-foreground)"
+          averageNetPower < 0 ? "text-(--error-foreground)" : averageNetPower > 0 ? "text-(--healthy-foreground)" : "text-foreground"
         )}>
           <span>
-            {netMaximumPower} MW
+            {signedFormatter.format(averageNetPower)} MW
+          </span>
+        </div>
+        <div className={cn(
+          "flex border-b border-border items-center justify-end",
+          maximumNetPower < 0 ? "text-(--error-foreground)" : maximumNetPower > 0 ? "text-(--healthy-foreground)" : "text-foreground"
+        )}>
+          <span>
+            {signedFormatter.format(maximumNetPower)} MW
           </span>
         </div>
 
