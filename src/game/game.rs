@@ -160,9 +160,12 @@ pub struct ThroughputDataPoint {
 pub struct ThroughputChartData {
     resource_name: String,
     current_amount: i32,
-    average_production: i32,
-    average_consumption: i32,
-    average_rate: i32,
+    current_production_rate: i32,
+    average_production_rate: f64,
+    current_consumption_rate: i32,
+    average_consumption_rate: f64,
+    current_net_rate: i32,
+    average_net_rate: f64,
     points: Vec<ThroughputDataPoint>,
 }
 
@@ -178,10 +181,10 @@ pub struct InventoryEntry {
 #[tsify(into_wasm_abi)]
 #[serde(rename_all = "camelCase")]
 pub struct PowerData {
-    maximum_consumption: f64,
-    maximum_generation: f64,
-    current_consumption: f64,
-    current_generation: f64,
+    maximum_power_consumption: f64,
+    maximum_power_production: f64,
+    current_power_consumption: f64,
+    current_power_production: f64,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone, Copy, Default)]
@@ -189,12 +192,10 @@ pub struct PowerData {
 #[serde(rename_all = "camelCase")]
 pub struct PowerDataPoint {
     timestamp: f64,
-    maximum_consumption: f64,
-    maximum_generation: f64,
-    net_maximum_power: f64,
-    current_consumption: f64,
-    current_generation: f64,
-    net_current_power: f64,
+    maximum_power_consumption: f64,
+    maximum_power_production: f64,
+    current_power_consumption: f64,
+    current_power_production: f64,
 }
 
 #[derive(Tsify, Serialize, Deserialize, Clone)]
@@ -202,12 +203,17 @@ pub struct PowerDataPoint {
 #[serde(rename_all = "camelCase")]
 pub struct PowerChartData {
     name: String,
-    average_maximum_consumption: f64,
-    average_maximum_generation: f64,
-    average_net_maximum_power: f64,
-    average_current_consumption: f64,
-    average_current_generation: f64,
-    average_net_current_power: f64,
+    maximum_power_consumption: f64,
+    maximum_power_production: f64,
+    maximum_net_power: f64,
+    // No need to track average maximum power since it is currently only being
+    // changed via a player-controlled action (building switch)
+    current_power_consumption: f64,
+    current_power_production: f64,
+    current_net_power: f64,
+    average_power_consumption: f64,
+    average_power_production: f64,
+    average_net_power: f64,
     points: Vec<PowerDataPoint>,
 }
 
@@ -495,16 +501,22 @@ impl Game {
                 }; self.sample_length].into());
 
             let current_amount = *self.inventory.get(resource_name).unwrap_or(&0);
-            let average_production = points.iter().map(|p| p.produced).sum::<i32>() / self.sample_length as i32;
-            let average_consumption = points.iter().map(|p| p.consumed).sum::<i32>() / self.sample_length as i32;
-            let average_rate = average_production + average_consumption;
+            let current_production_rate = points.iter().last().map(|p| p.produced).unwrap_or(0);
+            let average_production_rate = points.iter().map(|p| p.produced).sum::<i32>() as f64 / self.sample_length as f64;
+            let current_consumption_rate = points.iter().last().map(|p| p.consumed).unwrap_or(0);
+            let average_consumption_rate = points.iter().map(|p| p.consumed).sum::<i32>() as f64 / self.sample_length as f64;
+            let current_net_rate = current_production_rate + current_consumption_rate;
+            let average_net_rate = average_production_rate + average_consumption_rate;
 
             series.push(ThroughputChartData {
                 resource_name: resource_name.clone(),
-                current_amount: current_amount,
-                average_production,
-                average_consumption,
-                average_rate,
+                current_amount,
+                current_production_rate,
+                average_production_rate,
+                current_consumption_rate,
+                average_consumption_rate,
+                current_net_rate,
+                average_net_rate,
                 points: points.into(),
             });
         }
@@ -545,21 +557,27 @@ impl Game {
     #[wasm_bindgen(js_name = "getPowerChartData")]
     pub fn get_power_chart_data(&self) -> PowerChartData {
         let points = self.power_tracker.iter().cloned().collect::<Vec<_>>();
-        let average_maximum_consumption = points.iter().map(|p| p.maximum_consumption).sum::<f64>() / self.sample_length as f64;
-        let average_maximum_generation = points.iter().map(|p| p.maximum_generation).sum::<f64>() / self.sample_length as f64;
-        let average_net_maximum_power = points.iter().map(|p| p.net_maximum_power).sum::<f64>() / self.sample_length as f64;
-        let average_current_consumption = points.iter().map(|p| p.current_consumption).sum::<f64>() / self.sample_length as f64;
-        let average_current_generation = points.iter().map(|p| p.current_generation).sum::<f64>() / self.sample_length as f64;
-        let average_net_current_power = points.iter().map(|p| p.net_current_power).sum::<f64>() / self.sample_length as f64;
+        let maximum_power_consumption = points.iter().last().map(|p| p.maximum_power_consumption).unwrap_or(0.0);
+        let maximum_power_production = points.iter().last().map(|p| p.maximum_power_production).unwrap_or(0.0);
+        let maximum_net_power = maximum_power_production + maximum_power_consumption;
+        let current_power_consumption = points.iter().last().map(|p| p.current_power_consumption).unwrap_or(0.0);
+        let current_power_production = points.iter().last().map(|p| p.current_power_production).unwrap_or(0.0);
+        let current_net_power = current_power_production + current_power_consumption;
+        let average_power_consumption = points.iter().map(|p| p.current_power_consumption).sum::<f64>() / self.sample_length as f64;
+        let average_power_production = points.iter().map(|p| p.current_power_production).sum::<f64>() / self.sample_length as f64;
+        let average_net_power = average_power_production + average_power_consumption;
 
         PowerChartData {
             name: "Power Information".into(),
-            average_maximum_consumption,
-            average_maximum_generation,
-            average_net_maximum_power,
-            average_current_consumption,
-            average_current_generation,
-            average_net_current_power,
+            maximum_power_consumption,
+            maximum_power_production,
+            maximum_net_power,
+            current_power_consumption,
+            current_power_production,
+            current_net_power,
+            average_power_consumption,
+            average_power_production,
+            average_net_power,
             points,
         }
     }
@@ -572,12 +590,10 @@ impl Game {
     ) {
         self.power_tracker.push_back(PowerDataPoint {
             timestamp,
-            maximum_consumption: self.power_data.maximum_consumption,
-            maximum_generation: self.power_data.maximum_generation,
-            net_maximum_power: self.power_data.maximum_generation + self.power_data.maximum_consumption,
-            current_consumption: self.power_data.current_consumption,
-            current_generation: self.power_data.current_generation,
-            net_current_power: self.power_data.current_generation + self.power_data.current_consumption,
+            maximum_power_consumption: self.power_data.maximum_power_consumption,
+            maximum_power_production: self.power_data.maximum_power_production,
+            current_power_consumption: self.power_data.current_power_consumption,
+            current_power_production: self.power_data.current_power_production,
         });
         self.power_tracker.pop_front();
     }
@@ -648,12 +664,10 @@ impl Game {
         (0..sample_length)
             .map(|i| PowerDataPoint {
                 timestamp: 0.0 - (((sample_length - 1 - i) as f64) * sample_interval as f64),
-                maximum_consumption: 0.0,
-                maximum_generation: 0.0,
-                net_maximum_power: 0.0,
-                current_consumption: 0.0,
-                current_generation: 0.0,
-                net_current_power: 0.0,
+                maximum_power_consumption: 0.0,
+                maximum_power_production: 0.0,
+                current_power_consumption: 0.0,
+                current_power_production: 0.0,
             })
             .collect()
     }
@@ -763,10 +777,10 @@ impl Game {
             });
 
         self.power_data = PowerData {
-            maximum_consumption: -maximum_power_consumption,
-            maximum_generation: maximum_power_generation,
-            current_consumption: -current_power_consumption,
-            current_generation: current_power_generation,
+            maximum_power_consumption: -maximum_power_consumption,
+            maximum_power_production: maximum_power_generation,
+            current_power_consumption: -current_power_consumption,
+            current_power_production: current_power_generation,
         };
 
         // Power distribution policy: Proportionate distribution
