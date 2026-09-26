@@ -152,6 +152,8 @@ export function BuildingCard({
         value={(process.duration > 0) ? process.elapsed/(process.duration * 1000) * 100 : 100}
         mode={(process.duration > 0) ? "progress" : "continuous"}
         active={activeCount > 0 && buildingGroup.enabled}
+        rate={efficiency * buildingGroup.cycleSpeedMult}
+        durationMs={process.duration * 1000}
       />
       <ProcessCard process={process} />
       <div className="flex items-center justify-between">
