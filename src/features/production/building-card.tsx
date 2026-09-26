@@ -313,7 +313,7 @@ export function BuildingCard({
         {dialogMode === "removeAll" && (
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Remove all {totalCount} {name} buildings? This cannot be undone.
+              Remove {totalCount === 1 ? `${name} building` : `all ${totalCount} ${name} buildings`}? This action cannot be undone.
             </p>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={closeDialog}>
