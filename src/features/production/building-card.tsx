@@ -186,7 +186,7 @@ export function BuildingCard({
         {lowPower && (
           <div className="flex items-center gap-1">
             <PowerIcon size={13} stroke={status.warning} />
-            <span className="text-muted-foreground">Low power</span>
+            <span className="text-muted-foreground">Insufficient power</span>
           </div>
         )}
         {noPower && (
