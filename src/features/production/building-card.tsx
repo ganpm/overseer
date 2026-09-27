@@ -299,12 +299,31 @@ export function BuildingCard({
                   setQuantity(Number.isNaN(value) ? 1 : Math.max(1, value));
                 }}
               />
+              {dialogMode === "remove" && (
+                <>
+                  {quantity === totalCount ? (
+                    <p className="text-sm text-muted-foreground">
+                      Removes all {name} buildings.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Removes {quantity} {name} {quantity === 1 ? "building" : "buildings"}.
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    This action cannot be undone.
+                  </p>
+                </>
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={closeDialog}>
                 Cancel
               </Button>
-              <Button onClick={dialogMode === "add" ? confirmAdd : confirmRemove}>
+              <Button
+                onClick={dialogMode === "add" ? confirmAdd : confirmRemove}
+                variant={dialogMode === "add" ? "default" : "destructive"}
+              >
                 {dialogMode === "add" ? "Add" : "Remove"}
               </Button>
             </div>
